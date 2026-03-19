@@ -1,7 +1,6 @@
 package com.pickleball.booking.controller;
 
 import com.pickleball.booking.dto.BookingRequest;
-import com.pickleball.booking.entity.Booking;
 import com.pickleball.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -49,7 +48,7 @@ public String remove(@PathVariable Long id) {
 
     // ✅ HISTORY
 @GetMapping("/history")
-public List<Booking> history() {
+public List<Map<String, Object>> history() {
     return bookingService.history(getUserId());
 }
 

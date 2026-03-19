@@ -152,60 +152,105 @@ public class BookingService {
 
     // 🔥 CHECKOUT
     @Transactional
-    public Map<String, Object> checkout(Long userId) {
+public Map<String, Object> checkout(Long userId) {
 
-        validateBooker(userId);
-        clearExpiredCart();
+    validateBooker(userId);
+    clearExpiredCart();
 
-        List<Booking> cart = bookingRepository.findByUserIdAndStatus(userId, "IN_CART");
+    List<Booking> cart = bookingRepository.findByUserIdAndStatus(userId, "IN_CART");
 
-        if (cart.isEmpty()) throw new RuntimeException("Cart empty");
+    if (cart.isEmpty()) throw new RuntimeException("Cart empty");
 
-        List<Map<String, Object>> invoice = new ArrayList<>();
-        double total = 0;
+    List<Map<String, Object>> invoice = new ArrayList<>();
+    double total = 0;
 
-        try {
-            for (Booking b : cart) {
+    try {
+        for (Booking b : cart) {
 
-                Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
+            // 🔥 IMPORTANT: RE-CHECK AVAILABILITY
+            Optional<Booking> conflict = bookingRepository
+                    .findByVenueIdAndCourtIdAndBookingDateAndStartTime(
+                            b.getVenueId(),
+                            b.getCourtId(),
+                            b.getBookingDate(),
+                            b.getStartTime()
+                    );
 
-                LocalDate date = LocalDate.parse(b.getBookingDate());
-                boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
-                        || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+            if (conflict.isPresent() &&
+                    !conflict.get().getId().equals(b.getId()) &&
+                    "BOOKED".equals(conflict.get().getStatus())) {
 
-                double price = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
-
-                total += price;
-
-                b.setStatus("BOOKED");
-                bookingRepository.save(b);
-
-                Map<String, Object> item = new HashMap<>();
-                item.put("courtId", b.getCourtId());
-                item.put("time", b.getStartTime() + "-" + b.getEndTime());
-                item.put("price", price);
-
-                invoice.add(item);
+                // 🔥 PROPER CONFLICT MESSAGE
+                throw new RuntimeException(
+                        "Slot conflict: " + b.getStartTime() + "-" + b.getEndTime()
+                );
             }
 
-        } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("Slot conflict detected");
+            Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
+
+            LocalDate date = LocalDate.parse(b.getBookingDate());
+            boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
+                    || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+
+            double price = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
+
+            total += price;
+
+            b.setStatus("BOOKED");
+            bookingRepository.save(b);
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("courtId", b.getCourtId());
+            item.put("time", b.getStartTime() + "-" + b.getEndTime());
+            item.put("price", price);
+
+            invoice.add(item);
         }
 
-        Map<String, Object> res = new HashMap<>();
-        res.put("message", "Booking successful");
-        res.put("totalAmount", total);
-        res.put("bookings", invoice);
-
-        return res;
+    } catch (DataIntegrityViolationException e) {
+        throw new RuntimeException("Slot conflict detected");
     }
+
+    Map<String, Object> res = new HashMap<>();
+    res.put("message", "Booking successful");
+    res.put("totalAmount", total);
+    res.put("bookings", invoice);
+
+    return res;
+}
 
     // 🔥 HISTORY
-    public List<Booking> history(Long userId) {
-        validateBooker(userId);
-        return bookingRepository
-                .findByUserIdAndStatusOrderByCreatedAtDesc(userId, "BOOKED");
+public List<Map<String, Object>> history(Long userId) {
+
+    validateBooker(userId);
+
+    List<Booking> bookings =
+            bookingRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "BOOKED");
+
+    List<Map<String, Object>> result = new ArrayList<>();
+
+    for (Booking b : bookings) {
+
+        Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
+
+        LocalDate date = LocalDate.parse(b.getBookingDate());
+        boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
+                || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+
+        double price = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("court", "Court " + b.getCourtId()); // better format
+        item.put("date", b.getBookingDate());
+        item.put("time", b.getStartTime() + " - " + b.getEndTime());
+        item.put("amountPaid", price); // 🔥 REQUIRED
+        item.put("bookedAt", b.getCreatedAt()); // 🔥 timestamp
+
+        result.add(item);
     }
+
+    return result;
+}
 
     // 🔥 RESCHEDULE
     @Transactional
@@ -250,4 +295,50 @@ public class BookingService {
 
         return "Rescheduled successfully";
     }
+
+public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, String date) {
+
+    Venue venue = venueRepository.findById(venueId)
+            .orElseThrow(() -> new RuntimeException("Venue not found"));
+
+    if (!venue.getOwnerId().equals(userId)) {
+        throw new RuntimeException("Unauthorized");
+    }
+
+    List<Booking> bookings =
+            bookingRepository.findByVenueIdAndStatus(venueId, "BOOKED");
+
+    // 🔥 FILTER BY DATE
+    if (date != null) {
+        bookings = bookings.stream()
+                .filter(b -> b.getBookingDate().equals(date))
+                .toList();
+    }
+
+    List<Map<String, Object>> result = new ArrayList<>();
+
+    for (Booking b : bookings) {
+
+        User user = userRepository.findById(b.getUserId()).orElseThrow();
+
+        LocalDate d = LocalDate.parse(b.getBookingDate());
+        boolean isWeekend = d.getDayOfWeek() == DayOfWeek.SATURDAY
+                || d.getDayOfWeek() == DayOfWeek.SUNDAY;
+
+        Venue v = venueRepository.findById(b.getVenueId()).orElseThrow();
+
+        double price = isWeekend ? v.getWeekendRate() : v.getWeekdayRate();
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("court", "Court " + b.getCourtId());
+        item.put("date", b.getBookingDate());
+        item.put("time", b.getStartTime() + " - " + b.getEndTime());
+        item.put("bookerName", user.getName());
+        item.put("amount", price);
+
+        result.add(item);
+    }
+
+    return result;
+}
 }

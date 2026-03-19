@@ -3,6 +3,8 @@ package com.pickleball.booking.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "venues")
 @Getter
@@ -33,4 +35,13 @@ public class Venue {
     private String description;
 
     private String address;
+
+    // 🔥 NEW: Store up to 5 photo URLs
+    @ElementCollection
+    @CollectionTable(
+            name = "venue_photos",
+            joinColumns = @JoinColumn(name = "venue_id")
+    )
+    @Column(name = "photo_url")
+    private List<String> photos;
 }
