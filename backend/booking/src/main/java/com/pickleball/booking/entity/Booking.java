@@ -28,8 +28,7 @@ public class Booking {
 
     private Long userId;
 
-    private String status; // IN_CART / BOOKED
+    private String status; 
 
-    // ✅ NEW (for history sorting)
     private LocalDateTime createdAt;
 }

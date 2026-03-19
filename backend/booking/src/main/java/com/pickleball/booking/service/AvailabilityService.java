@@ -67,7 +67,9 @@ public Map<String, Object> checkAvailability(Long venueId, String date, Long use
                 int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
                 int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
 
-                if (slotStart < bookedEnd && slotEnd > bookedStart) {
+                boolean overlap = slotStart < bookedEnd && slotEnd > bookedStart;
+
+                if (overlap) {
 
                     if ("BOOKED".equals(b.getStatus())) {
                         status = "Booked";
@@ -80,13 +82,9 @@ public Map<String, Object> checkAvailability(Long venueId, String date, Long use
 
                         if (active) {
 
-                            // 🔥 YOUR OWN CART
                             if (b.getUserId().equals(userId)) {
                                 status = "In Cart";
-                            }
-
-                            // 🔥 OTHER USERS
-                            else {
+                            } else {
                                 status = "Booked";
                             }
                         }

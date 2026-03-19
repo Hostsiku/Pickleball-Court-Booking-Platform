@@ -22,40 +22,46 @@ public class BookingController {
                 .getPrincipal();
     }
 
-    // ✅ Add to cart
+    // Add to cart
     @PostMapping("/add")
     public String addToCart(@RequestBody BookingRequest request) {
         return bookingService.addToCart(request, getUserId());
     }
 
-    // 🔥 UPDATED CART API
+    //UPDATED CART API
     @GetMapping("/cart")
     public Map<String, Object> getCart() {
         return bookingService.getCart(getUserId());
     }
 
-    // ✅ Remove
+    // Remove
 @DeleteMapping("/{id}")
 public String remove(@PathVariable Long id) {
     return bookingService.removeFromCart(id, getUserId());
 }
 
-    // 🔥 UPDATED CHECKOUT
+    // UPDATED CHECKOUT
     @PostMapping("/checkout")
     public Map<String, Object> checkout() {
         return bookingService.checkout(getUserId());
     }
 
-    // ✅ HISTORY
+    // HISTORY
 @GetMapping("/history")
 public List<Map<String, Object>> history() {
     return bookingService.history(getUserId());
 }
 
-// 🔥 RESCHEDULE
+// RESCHEDULE
 @PutMapping("/reschedule/{id}")
 public String reschedule(@PathVariable Long id,
                          @RequestBody BookingRequest request) {
     return bookingService.reschedule(id, request, getUserId());
+}
+
+// cancel booking
+@DeleteMapping("/cancel/{id}")
+public String cancelBooking(@PathVariable Long id) {
+    return bookingService.cancelBooking(id, getUserId());
 }
 }

@@ -25,7 +25,7 @@ public class BookingService {
 
     private static final int CART_EXPIRY_MINUTES = 10;
 
-    // 🔥 COMMON ROLE CHECK
+    // COMMON ROLE CHECK
     private void validateBooker(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -35,7 +35,7 @@ public class BookingService {
         }
     }
 
-    // 🔥 CLEAN EXPIRED CART ITEMS
+    // CLEAN EXPIRED CART ITEMS
     private void clearExpiredCart() {
         LocalDateTime expiryTime = LocalDateTime.now().minusMinutes(CART_EXPIRY_MINUTES);
         List<Booking> expired =
@@ -44,19 +44,19 @@ public class BookingService {
         bookingRepository.deleteAll(expired);
     }
 
-    // ✅ ADD TO CART
+    // ADD TO CART
     public String addToCart(BookingRequest request, Long userId) {
 
         validateBooker(userId);
-        clearExpiredCart(); // 🔥
+        clearExpiredCart(); 
 
-        // 🔥 VALIDATION
+        // VALIDATION
         if (request.getVenueId() == null || request.getDate() == null
                 || request.getStartTime() == null || request.getEndTime() == null) {
             throw new RuntimeException("All fields are required");
         }
 
-        // 🔒 PREVENT DUPLICATE / CONFLICT
+        // PREVENT DUPLICATE
         Optional<Booking> existing = bookingRepository
                 .findByVenueIdAndCourtIdAndBookingDateAndStartTime(
                         request.getVenueId(),
@@ -99,11 +99,11 @@ public class BookingService {
         return "Added to cart";
     }
 
-    // 🔥 GET CART (FIXED BUG)
+    // GET CART (FIXED BUG)
     public Map<String, Object> getCart(Long userId) {
 
         validateBooker(userId);
-        clearExpiredCart(); // 🔥
+        clearExpiredCart(); 
 
         List<Booking> cart = bookingRepository.findByUserIdAndStatus(userId, "IN_CART");
 
@@ -143,14 +143,14 @@ public class BookingService {
         return response;
     }
 
-    // 🔥 REMOVE
+    // REMOVE
     public String removeFromCart(Long id, Long userId) {
         validateBooker(userId);
         bookingRepository.deleteById(id);
         return "Removed";
     }
 
-    // 🔥 CHECKOUT
+    // CHECKOUT
     @Transactional
 public Map<String, Object> checkout(Long userId) {
 
@@ -167,7 +167,7 @@ public Map<String, Object> checkout(Long userId) {
     try {
         for (Booking b : cart) {
 
-            // 🔥 IMPORTANT: RE-CHECK AVAILABILITY
+            //RE-CHECK AVAILABILITY
             Optional<Booking> conflict = bookingRepository
                     .findByVenueIdAndCourtIdAndBookingDateAndStartTime(
                             b.getVenueId(),
@@ -180,7 +180,7 @@ public Map<String, Object> checkout(Long userId) {
                     !conflict.get().getId().equals(b.getId()) &&
                     "BOOKED".equals(conflict.get().getStatus())) {
 
-                // 🔥 PROPER CONFLICT MESSAGE
+                //CONFLICT MESSAGE
                 throw new RuntimeException(
                         "Slot conflict: " + b.getStartTime() + "-" + b.getEndTime()
                 );
@@ -219,7 +219,7 @@ public Map<String, Object> checkout(Long userId) {
     return res;
 }
 
-    // 🔥 HISTORY
+    // HISTORY
 public List<Map<String, Object>> history(Long userId) {
 
     validateBooker(userId);
@@ -240,11 +240,11 @@ public List<Map<String, Object>> history(Long userId) {
         double price = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
 
         Map<String, Object> item = new HashMap<>();
-        item.put("court", "Court " + b.getCourtId()); // better format
+        item.put("court", "Court " + b.getCourtId()); 
         item.put("date", b.getBookingDate());
         item.put("time", b.getStartTime() + " - " + b.getEndTime());
-        item.put("amountPaid", price); // 🔥 REQUIRED
-        item.put("bookedAt", b.getCreatedAt()); // 🔥 timestamp
+        item.put("amountPaid", price); 
+        item.put("bookedAt", b.getCreatedAt());
 
         result.add(item);
     }
@@ -252,7 +252,7 @@ public List<Map<String, Object>> history(Long userId) {
     return result;
 }
 
-    // 🔥 RESCHEDULE
+    //RESCHEDULE
     @Transactional
     public String reschedule(Long bookingId, BookingRequest request, Long userId) {
 
@@ -308,7 +308,7 @@ public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, Str
     List<Booking> bookings =
             bookingRepository.findByVenueIdAndStatus(venueId, "BOOKED");
 
-    // 🔥 FILTER BY DATE
+    //FILTER BY DATE
     if (date != null) {
         bookings = bookings.stream()
                 .filter(b -> b.getBookingDate().equals(date))
@@ -340,5 +340,40 @@ public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, Str
     }
 
     return result;
+}
+
+// cancel booking
+@Transactional
+public String cancelBooking(Long bookingId, Long userId) {
+
+    validateBooker(userId);
+
+    Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    // Only owner can cancel
+    if (!booking.getUserId().equals(userId)) {
+        throw new RuntimeException("Unauthorized");
+    }
+
+    // Only BOOKED bookings can be cancelled
+    if (!"BOOKED".equals(booking.getStatus())) {
+        throw new RuntimeException("Only confirmed bookings can be cancelled");
+    }
+
+    // 12 hour restriction
+    LocalDateTime bookingTime = LocalDateTime.of(
+            LocalDate.parse(booking.getBookingDate()),
+            LocalTime.parse(booking.getStartTime())
+    );
+
+    if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
+        throw new RuntimeException("Cannot cancel within 12 hours");
+    }
+
+    // slot becomes available automatically
+    bookingRepository.delete(booking);
+
+    return "Booking cancelled successfully";
 }
 }

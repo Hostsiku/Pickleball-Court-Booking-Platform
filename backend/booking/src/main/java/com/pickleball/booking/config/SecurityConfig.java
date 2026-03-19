@@ -14,7 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final JwtAuthEntryPoint jwtAuthEntryPoint; // ✅ NEW
+    private final JwtAuthEntryPoint jwtAuthEntryPoint; 
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -32,7 +32,7 @@ public class SecurityConfig {
             )
 
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(jwtAuthEntryPoint) // ✅ FIX 401
+                .authenticationEntryPoint(jwtAuthEntryPoint)
             )
 
             .authorizeHttpRequests(auth -> auth

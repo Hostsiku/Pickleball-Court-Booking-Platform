@@ -19,7 +19,7 @@ public class AuthService {
 
     public String register(RegisterRequest request) {
 
-        // 🔥 VALIDATE ALL FIELDS
+        // VALIDATE ALL FIELDS
         if (request.getName() == null || request.getName().isEmpty()
                 || request.getEmail() == null || request.getEmail().isEmpty()
                 || request.getPassword() == null || request.getPassword().isEmpty()
@@ -28,13 +28,13 @@ public class AuthService {
             throw new RuntimeException("All fields are required");
         }
 
-        // 🔥 VALIDATE ROLE
+        // VALIDATE ROLE
         if (!request.getRole().equalsIgnoreCase("OWNER")
                 && !request.getRole().equalsIgnoreCase("BOOKER")) {
             throw new RuntimeException("Role must be OWNER or BOOKER");
         }
 
-        // 🔥 DUPLICATE EMAIL
+        // DUPLICATE EMAIL
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }

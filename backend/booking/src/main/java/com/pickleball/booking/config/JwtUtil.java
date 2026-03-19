@@ -14,7 +14,7 @@ public class JwtUtil {
 
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
 
-    // ✅ Generate Token
+    // Generate Token
     public String generateToken(Long id, String role) {
         return Jwts.builder()
                 .setSubject(String.valueOf(id)) // storing user id
@@ -25,7 +25,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    // ✅ Extract ALL claims
+    // Extract ALL claims
     public Claims extractClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
@@ -34,17 +34,17 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // ✅ Extract User ID (IMPORTANT)
+    // Extract User ID 
     public Long extractUserId(String token) {
         return Long.parseLong(extractClaims(token).getSubject());
     }
 
-    // ✅ Extract Role (VERY USEFUL)
+    // Extract Role
     public String extractRole(String token) {
         return extractClaims(token).get("role", String.class);
     }
 
-    // ✅ Validate Token
+    // Validate Token
     public boolean validateToken(String token) {
         try {
             extractClaims(token);

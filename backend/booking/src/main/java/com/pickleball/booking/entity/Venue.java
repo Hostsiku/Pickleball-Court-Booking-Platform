@@ -36,7 +36,6 @@ public class Venue {
 
     private String address;
 
-    // 🔥 NEW: Store up to 5 photo URLs
     @ElementCollection
     @CollectionTable(
             name = "venue_photos",

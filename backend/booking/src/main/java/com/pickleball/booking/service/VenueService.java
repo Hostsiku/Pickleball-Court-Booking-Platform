@@ -96,11 +96,10 @@ public List<Map<String, Object>> getMarketplaceVenues() {
         item.put("location", v.getAddress());
         item.put("courts", v.getNoOfCourts());
 
-        // 🔥 starting price = min of weekday/weekend
+        // starting price = min of weekday/weekend
         int startingPrice = Math.min(v.getWeekdayRate(), v.getWeekendRate());
         item.put("startingPrice", startingPrice);
 
-        // 🔥 thumbnail (first photo)
         if (v.getPhotos() != null && !v.getPhotos().isEmpty()) {
             item.put("photo", v.getPhotos().get(0));
         } else {
@@ -164,7 +163,6 @@ public List<Map<String, Object>> filterVenues(String date, String time) {
             int price = Math.min(v.getWeekdayRate(), v.getWeekendRate());
             item.put("startingPrice", price);
 
-            // 🔥 FIX: include photo
             if (v.getPhotos() != null && !v.getPhotos().isEmpty()) {
                 item.put("photo", v.getPhotos().get(0));
             } else {

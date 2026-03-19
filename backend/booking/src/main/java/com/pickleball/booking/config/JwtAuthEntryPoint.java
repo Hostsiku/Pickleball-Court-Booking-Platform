@@ -16,7 +16,7 @@ public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
                          org.springframework.security.core.AuthenticationException authException)
             throws IOException {
 
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // ✅ 401
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); 
         response.setContentType("application/json");
         response.getWriter().write("{\"error\": \"Unauthorized - Invalid or Missing Token\"}");
     }
