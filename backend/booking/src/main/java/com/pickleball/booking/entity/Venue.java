@@ -36,11 +36,6 @@ public class Venue {
 
     private String address;
 
-    @ElementCollection
-    @CollectionTable(
-            name = "venue_photos",
-            joinColumns = @JoinColumn(name = "venue_id")
-    )
-    @Column(name = "photo_url")
-    private List<String> photos;
+@OneToMany(mappedBy = "venueId", cascade = CascadeType.ALL)
+private List<VenuePhoto> photos;
 }

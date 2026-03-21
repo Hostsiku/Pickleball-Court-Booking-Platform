@@ -11,10 +11,8 @@ import java.io.IOException;
 public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
 
     @Override
-    public void commence(HttpServletRequest request,
-                         HttpServletResponse response,
-                         org.springframework.security.core.AuthenticationException authException)
-            throws IOException {
+    public void commence(HttpServletRequest request, HttpServletResponse response, 
+        org.springframework.security.core.AuthenticationException authException) throws IOException {
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); 
         response.setContentType("application/json");

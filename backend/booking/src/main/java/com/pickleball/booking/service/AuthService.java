@@ -17,9 +17,10 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public String register(RegisterRequest request) {
+    // for registration code
+public String register(RegisterRequest request) {
 
-        // VALIDATE ALL FIELDS
+        // validates all fields
         if (request.getName() == null || request.getName().isEmpty()
                 || request.getEmail() == null || request.getEmail().isEmpty()
                 || request.getPassword() == null || request.getPassword().isEmpty()
@@ -28,13 +29,12 @@ public class AuthService {
             throw new RuntimeException("All fields are required");
         }
 
-        // VALIDATE ROLE
-        if (!request.getRole().equalsIgnoreCase("OWNER")
-                && !request.getRole().equalsIgnoreCase("BOOKER")) {
+        // validate role is owner or booker
+        if (!request.getRole().equalsIgnoreCase("OWNER") && !request.getRole().equalsIgnoreCase("BOOKER")) {
             throw new RuntimeException("Role must be OWNER or BOOKER");
         }
 
-        // DUPLICATE EMAIL
+        // check email already exist 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }
@@ -50,10 +50,11 @@ public class AuthService {
         return "User registered successfully";
     }
 
-    public String login(AuthRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+// for login code
+public String login(AuthRequest request) {
+
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");

@@ -22,10 +22,7 @@ public class AvailabilityController {
     }
 
     @GetMapping("/{venueId}")
-    public Map<String, Object> getAvailability(
-            @PathVariable Long venueId,
-            @RequestParam String date
-    ) {
+    public Map<String, Object> getAvailability(@PathVariable Long venueId, @RequestParam String date) {
         return availabilityService.checkAvailability(venueId, date, getUserId());
     }
 }

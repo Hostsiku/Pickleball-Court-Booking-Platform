@@ -15,111 +15,114 @@ public class AvailabilityService {
     private final VenueRepository venueRepository;
     private final BookingRepository bookingRepository;
 
-    public AvailabilityService(VenueRepository venueRepository,
-                               BookingRepository bookingRepository) {
+    public AvailabilityService(VenueRepository venueRepository, BookingRepository bookingRepository) {
         this.venueRepository = venueRepository;
         this.bookingRepository = bookingRepository;
     }
 
-public Map<String, Object> checkAvailability(Long venueId, String date, Long userId) {
+    // availability check code
+    public Map<String, Object> checkAvailability(Long venueId, String date, Long userId) {
 
-    if (venueId == null) throw new RuntimeException("VenueId required");
-    if (date == null) throw new RuntimeException("Date required");
+        // validation check
+        if (venueId == null)
+            throw new RuntimeException("VenueId required");
+        if (date == null)
+            throw new RuntimeException("Date required");
 
-    Venue venue = venueRepository.findById(venueId)
-            .orElseThrow(() -> new RuntimeException("Venue not found"));
+        // venue exist check
+        Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
 
-    List<Booking> bookings =
-            bookingRepository.findByVenueIdAndBookingDate(venueId, date);
+        List<Booking> bookings = bookingRepository.findByVenueIdAndBookingDate(venueId, date);
 
-    LocalDate selectedDate = LocalDate.parse(date);
-    boolean isWeekend = selectedDate.getDayOfWeek() == DayOfWeek.SATURDAY
-            || selectedDate.getDayOfWeek() == DayOfWeek.SUNDAY;
+        // check its weekend
+        LocalDate selectedDate = LocalDate.parse(date);
+        boolean isWeekend = selectedDate.getDayOfWeek() == DayOfWeek.SATURDAY
+                || selectedDate.getDayOfWeek() == DayOfWeek.SUNDAY;
 
-    LocalDate today = LocalDate.now();
-    boolean isToday = selectedDate.equals(today);
-    boolean isPastDate = selectedDate.isBefore(today);
+        // get date and check weter its today or not and past as well
+        LocalDate today = LocalDate.now();
+        boolean isToday = selectedDate.equals(today);
+        boolean isPastDate = selectedDate.isBefore(today);
 
-    int currentHour = LocalTime.now().getHour();
+        int currentHour = LocalTime.now().getHour();
 
-    double pricePerSlot = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
+        double pricePerSlot = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
 
-    int start = Integer.parseInt(venue.getOpenTime().split(":")[0]);
-    int end = Integer.parseInt(venue.getCloseTime().split(":")[0]);
+        int start = Integer.parseInt(venue.getOpenTime().split(":")[0]);
+        int end = Integer.parseInt(venue.getCloseTime().split(":")[0]);
 
-    List<Map<String, Object>> courts = new ArrayList<>();
+        List<Map<String, Object>> courts = new ArrayList<>();
 
-    for (int court = 1; court <= venue.getNoOfCourts(); court++) {
+        for (int court = 1; court <= venue.getNoOfCourts(); court++) {
 
-        List<Map<String, Object>> slots = new ArrayList<>();
+            List<Map<String, Object>> slots = new ArrayList<>();
 
-        for (int i = start; i < end; i++) {
+            for (int i = start; i < end; i++) {
 
-            int slotStart = i;
-            int slotEnd = i + 1;
+                int slotStart = i;
+                int slotEnd = i + 1;
 
-            String status = "Available";
+                String status = "Available";
 
-            for (Booking b : bookings) {
+                // check booking conflict
+                for (Booking b : bookings) {
 
-                if (b.getCourtId() != court) continue;
+                    if (b.getCourtId() != court)
+                        continue;
 
-                int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
-                int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
+                    int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
+                    int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
 
-                boolean overlap = slotStart < bookedEnd && slotEnd > bookedStart;
+                    boolean overlap = slotStart < bookedEnd && slotEnd > bookedStart;
 
-                if (overlap) {
+                    if (overlap) {
 
-                    if ("BOOKED".equals(b.getStatus())) {
-                        status = "Booked";
-                    }
+                        if ("IN_CART".equals(b.getStatus())) {
 
-                    else if ("IN_CART".equals(b.getStatus())) {
+                            boolean active = b.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(10));
 
-                        boolean active =
-                                b.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(10));
-
-                        if (active) {
-
-                            if (b.getUserId().equals(userId)) {
-                                status = "In Cart";
-                            } else {
-                                status = "Booked";
+                            if (active) {
+                                if (b.getUserId().equals(userId)) {
+                                    status = "IN_CART";
+                                    break;
+                                } else {
+                                    status = "BOOKED";
+                                }
                             }
                         }
+
+                        else if ("BOOKED".equals(b.getStatus())) {
+                            status = "BOOKED";
+                        }
                     }
-
-                    break;
                 }
+
+                if (isPastDate) {
+                    status = "Unavailable";
+                } else if (isToday && slotEnd <= currentHour) {
+                    status = "Unavailable";
+                }
+
+                Map<String, Object> slot = new HashMap<>();
+                slot.put("time", slotStart + ":00 - " + slotEnd + ":00");
+                slot.put("status", status);
+                slot.put("price", pricePerSlot);
+
+                slots.add(slot);
             }
 
-            if (isPastDate) {
-                status = "Unavailable";
-            } else if (isToday && slotEnd <= currentHour) {
-                status = "Unavailable";
-            }
+            Map<String, Object> courtMap = new HashMap<>();
+            courtMap.put("courtId", court);
+            courtMap.put("slots", slots);
 
-            Map<String, Object> slot = new HashMap<>();
-            slot.put("time", slotStart + ":00 - " + slotEnd + ":00");
-            slot.put("status", status);
-            slot.put("price", pricePerSlot);
-
-            slots.add(slot);
+            courts.add(courtMap);
         }
 
-        Map<String, Object> courtMap = new HashMap<>();
-        courtMap.put("courtId", court);
-        courtMap.put("slots", slots);
+        Map<String, Object> response = new HashMap<>();
+        response.put("venueId", venueId);
+        response.put("date", date);
+        response.put("courts", courts);
 
-        courts.add(courtMap);
+        return response;
     }
-
-    Map<String, Object> response = new HashMap<>();
-    response.put("venueId", venueId);
-    response.put("date", date);
-    response.put("courts", courts);
-
-    return response;
-}
 }

@@ -2,11 +2,16 @@ package com.pickleball.booking.service;
 
 import com.pickleball.booking.entity.Booking;
 import com.pickleball.booking.entity.Venue;
+import com.pickleball.booking.entity.VenuePhoto;
 import com.pickleball.booking.repository.VenueRepository;
 import com.pickleball.booking.repository.BookingRepository;
+import com.pickleball.booking.repository.VenuePhotoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 
 @Service
@@ -15,52 +20,85 @@ public class VenueService {
 
     private final VenueRepository venueRepository;
     private final BookingRepository bookingRepository;
+    private final VenuePhotoRepository venuePhotoRepository;
 
-public Venue createVenue(Venue venue, Long userId) {
+    // create venue code
+    public Venue createVenue(Venue venue, Long userId) {
 
-    if (venue.getName() == null || venue.getName().isEmpty()
-            || venue.getAddress() == null || venue.getAddress().isEmpty()
-            || venue.getOpenTime() == null
-            || venue.getCloseTime() == null
-            || venue.getNoOfCourts() <= 0) {
+        if (venue.getName() == null || venue.getName().isEmpty()
+                || venue.getAddress() == null || venue.getAddress().isEmpty()
+                || venue.getOpenTime() == null
+                || venue.getCloseTime() == null
+                || venue.getPhoneNo() == null
+                || venue.getEmail() == null
+                || venue.getDescription() == null
+                || venue.getNoOfCourts() <= 0) {
 
-        throw new RuntimeException("All venue fields are required");
+            throw new RuntimeException("All venue fields are required");
+        }
+
+        // time validation
+        LocalTime open;
+        LocalTime close;
+
+        try {
+            open = LocalTime.parse(venue.getOpenTime());
+            close = LocalTime.parse(venue.getCloseTime());
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid time format (HH:mm required)");
+        }
+
+        if (!open.isBefore(close)) {
+            throw new RuntimeException("Open time must be before close time");
+        }
+
+        venue.setOwnerId(userId);
+        return venueRepository.save(venue);
     }
 
-if (venue.getPhotos() != null && venue.getPhotos().size() > 5) {
-    throw new RuntimeException("Maximum 5 photos allowed");
-}
-
-    venue.setOwnerId(userId);
-    return venueRepository.save(venue);
-}
-
+    // get all venues
     public List<Venue> getAllVenues() {
         return venueRepository.findAll();
     }
 
+    // get venues by id
     public Venue getVenueById(Long id) {
         return venueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
     }
 
+    // update venues 
     public Venue updateVenue(Long id, Venue updatedVenue, Long userId) {
+
         Venue venue = getVenueById(id);
 
         if (!venue.getOwnerId().equals(userId)) {
             throw new RuntimeException("Not your venue");
         }
 
-if (updatedVenue.getPhotos() != null && updatedVenue.getPhotos().size() > 5) {
-    throw new RuntimeException("Maximum 5 photos allowed");
-}
+        // time validation
+        if (updatedVenue.getOpenTime() != null && updatedVenue.getCloseTime() != null) {
 
-venue.setPhotos(updatedVenue.getPhotos());
+            LocalTime open;
+            LocalTime close;
+
+            try {
+                open = LocalTime.parse(updatedVenue.getOpenTime());
+                close = LocalTime.parse(updatedVenue.getCloseTime());
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid time format (HH:mm required)");
+            }
+
+            if (!open.isBefore(close)) {
+                throw new RuntimeException("Open time must be before close time");
+            }
+
+            venue.setOpenTime(updatedVenue.getOpenTime());
+            venue.setCloseTime(updatedVenue.getCloseTime());
+        }
 
         venue.setName(updatedVenue.getName());
         venue.setNoOfCourts(updatedVenue.getNoOfCourts());
-        venue.setOpenTime(updatedVenue.getOpenTime());
-        venue.setCloseTime(updatedVenue.getCloseTime());
         venue.setWeekendRate(updatedVenue.getWeekendRate());
         venue.setWeekdayRate(updatedVenue.getWeekdayRate());
         venue.setPhoneNo(updatedVenue.getPhoneNo());
@@ -71,9 +109,11 @@ venue.setPhotos(updatedVenue.getPhotos());
         return venueRepository.save(venue);
     }
 
+    // datele venue code
     public void deleteVenue(Long id, Long userId) {
         Venue venue = getVenueById(id);
 
+        // id check validation 
         if (!venue.getOwnerId().equals(userId)) {
             throw new RuntimeException("Not your venue");
         }
@@ -81,98 +121,165 @@ venue.setPhotos(updatedVenue.getPhotos());
         venueRepository.delete(venue);
     }
 
-    // for market place
-public List<Map<String, Object>> getMarketplaceVenues() {
+    // filter bt time and date for booker
+    public List<Map<String, Object>> filterVenues(String date, String time) {
 
-    List<Venue> venues = venueRepository.findAll();
-
-    List<Map<String, Object>> result = new ArrayList<>();
-
-    for (Venue v : venues) {
-
-        Map<String, Object> item = new HashMap<>();
-        item.put("id", v.getId());
-        item.put("name", v.getName());
-        item.put("location", v.getAddress());
-        item.put("courts", v.getNoOfCourts());
-
-        // starting price = min of weekday/weekend
-        int startingPrice = Math.min(v.getWeekdayRate(), v.getWeekendRate());
-        item.put("startingPrice", startingPrice);
-
-        if (v.getPhotos() != null && !v.getPhotos().isEmpty()) {
-            item.put("photo", v.getPhotos().get(0));
-        } else {
-            item.put("photo", null);
+        // validate date format
+        LocalDate parsedDate;
+        try {
+            parsedDate = LocalDate.parse(date);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
         }
 
-        result.add(item);
-    }
+        //validate past time
+        if (parsedDate.isBefore(LocalDate.now())) {
+            throw new RuntimeException("Past date not allowed");
+        }
 
-    return result;
-}
+        // validate time format
+        LocalTime parsedTime;
+        try {
+            parsedTime = LocalTime.parse(time);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid time format (HH:mm required)");
+        }
 
-// filters for booker with date and time
-public List<Map<String, Object>> filterVenues(String date, String time) {
+        List<Venue> venues = venueRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
 
-    List<Venue> venues = venueRepository.findAll();
-    List<Map<String, Object>> result = new ArrayList<>();
+        for (Venue v : venues) {
 
-    for (Venue v : venues) {
+            int open = Integer.parseInt(v.getOpenTime().split(":")[0]);
+            int close = Integer.parseInt(v.getCloseTime().split(":")[0]);
 
-        List<Booking> bookings =
-                bookingRepository.findByVenueIdAndBookingDate(v.getId(), date);
+            if (parsedTime.getHour() < open || parsedTime.getHour() >= close) {
+                continue;
+            }
 
-        boolean available = false;
+            List<Booking> bookings =
+                    bookingRepository.findByVenueIdAndBookingDate(v.getId(), date);
 
-        for (int court = 1; court <= v.getNoOfCourts(); court++) {
+            boolean available = false;
 
-            boolean booked = false;
+            for (int court = 1; court <= v.getNoOfCourts(); court++) {
 
-            for (Booking b : bookings) {
+                boolean booked = false;
 
-                boolean isActiveCart =
-                        "IN_CART".equals(b.getStatus()) &&
-                        b.getCreatedAt().isAfter(
-                                java.time.LocalDateTime.now().minusMinutes(10)
-                        );
+                for (Booking b : bookings) {
 
-                if (b.getCourtId() == court &&
-                        b.getStartTime().equals(time) &&
-                        ("BOOKED".equals(b.getStatus()) || isActiveCart)) {
+                    boolean isActiveCart =
+                            "IN_CART".equals(b.getStatus()) &&
+                            b.getCreatedAt().isAfter(
+                                    java.time.LocalDateTime.now().minusMinutes(10)
+                            );
 
-                    booked = true;
+                    if (b.getCourtId() == court &&
+                            b.getStartTime().equals(time) &&
+                            ("BOOKED".equals(b.getStatus()) || isActiveCart)) {
+
+                        booked = true;
+                        break;
+                    }
+                }
+
+                if (!booked) {
+                    available = true;
                     break;
                 }
             }
 
-            if (!booked) {
-                available = true;
-                break;
+            if (available) {
+
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", v.getId());
+                item.put("name", v.getName());
+                item.put("location", v.getAddress());
+                item.put("courts", v.getNoOfCourts());
+                item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
+
+                List<VenuePhoto> photos = venuePhotoRepository.findByVenueId(v.getId());
+                item.put("photo", photos.isEmpty() ? null :
+                        "/api/venues/photo/" + photos.get(0).getId());
+
+                result.add(item);
             }
         }
 
-        if (available) {
+        return result;
+    }
+
+    // market place get all venues
+    public List<Map<String, Object>> getMarketplaceVenues() {
+
+        List<Venue> venues = venueRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Venue v : venues) {
 
             Map<String, Object> item = new HashMap<>();
             item.put("id", v.getId());
             item.put("name", v.getName());
             item.put("location", v.getAddress());
             item.put("courts", v.getNoOfCourts());
+            item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
 
-            int price = Math.min(v.getWeekdayRate(), v.getWeekendRate());
-            item.put("startingPrice", price);
-
-            if (v.getPhotos() != null && !v.getPhotos().isEmpty()) {
-                item.put("photo", v.getPhotos().get(0));
-            } else {
-                item.put("photo", null);
-            }
+            List<VenuePhoto> photos = venuePhotoRepository.findByVenueId(v.getId());
+            item.put("photo", photos.isEmpty() ? null :
+                    "http://localhost:8080/api/venues/photo/" + photos.get(0).getId());
 
             result.add(item);
         }
+
+        return result;
     }
 
-    return result;
+    // uplaod image
+    public String uploadPhoto(Long venueId, MultipartFile file, Long userId) throws Exception {
+
+        Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
+
+        if (!venue.getOwnerId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (venuePhotoRepository.findByVenueId(venueId).size() >= 5) {
+            throw new RuntimeException("Maximum 5 photos allowed");
+        }
+
+        if (file.isEmpty()) {
+            throw new RuntimeException("File is empty");
+        }
+
+        // if (!file.getContentType().startsWith("image/")) {
+        //     throw new RuntimeException("Only image files allowed");
+        // }
+
+        VenuePhoto photo = new VenuePhoto();
+        photo.setVenueId(venueId);
+        photo.setFileName(file.getOriginalFilename());
+        photo.setContentType(file.getContentType());
+        photo.setData(file.getBytes());
+
+        venuePhotoRepository.save(photo);
+
+        return "Photo uploaded successfully";
+    }
+
+    // delete photos
+    public String deletePhoto(Long venueId, Long photoId, Long userId) {
+
+    Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
+
+    if (!venue.getOwnerId().equals(userId)) {
+        throw new RuntimeException("Unauthorized");
+    }
+
+    VenuePhoto photo = venuePhotoRepository.findByIdAndVenueId(photoId, venueId)
+            .orElseThrow(() -> new RuntimeException("Photo not found for this venue"));
+
+    venuePhotoRepository.delete(photo);
+
+    return "Photo deleted successfully";
 }
 }

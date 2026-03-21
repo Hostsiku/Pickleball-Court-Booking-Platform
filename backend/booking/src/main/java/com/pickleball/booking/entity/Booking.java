@@ -9,8 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "bookings",
-       uniqueConstraints = @UniqueConstraint(columnNames = {
+@Table(name = "bookings", uniqueConstraints = @UniqueConstraint(columnNames = {
            "venueId", "courtId", "bookingDate", "startTime"
        }))
 public class Booking {
