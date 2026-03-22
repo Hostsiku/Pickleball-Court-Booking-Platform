@@ -3,16 +3,16 @@ package com.pickleball.booking.controller;
 import com.pickleball.booking.entity.Venue;
 import com.pickleball.booking.entity.VenuePhoto;
 import com.pickleball.booking.service.VenueService;
-import com.pickleball.booking.config.JwtUtil;
 import com.pickleball.booking.service.BookingService;
 import com.pickleball.booking.repository.VenuePhotoRepository;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -22,29 +22,22 @@ import java.util.Map;
 public class VenueController {
 
     private final VenueService venueService;
-    private final JwtUtil jwtUtil;
     private final BookingService bookingService;
     private final VenuePhotoRepository venuePhotoRepository;
 
-    private Long getUserId(String token) {
-        Claims claims = jwtUtil.extractClaims(token.substring(7));
-        return Long.parseLong(claims.getSubject());
-    }
-
-    private String getUserRole(String token) {
-        Claims claims = jwtUtil.extractClaims(token.substring(7));
-        return (String) claims.get("role");
+    private Long getUserId() {
+        return (Long) SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getPrincipal();
     }
 
     // create venue mapping
+    @PreAuthorize("hasRole('OWNER')")
     @PostMapping
-    public Venue createVenue(@RequestBody Venue venue, @RequestHeader("Authorization") String token) {
+    public Venue createVenue(@Valid @RequestBody Venue venue) {
 
-        if (!getUserRole(token).equals("OWNER")) {
-            throw new RuntimeException("Only owner can create venue");
-        }
-
-        return venueService.createVenue(venue, getUserId(token));
+        return venueService.createVenue(venue, getUserId());
     }
 
     // get all venues
@@ -60,38 +53,29 @@ public class VenueController {
     }
 
     // update venue mapping
+    @PreAuthorize("hasRole('OWNER')")
     @PutMapping("/{id}")
-    public Venue updateVenue(@PathVariable Long id, @RequestBody Venue venue, @RequestHeader("Authorization") String token) {
+    public Venue updateVenue(@PathVariable Long id, @RequestBody Venue venue) {
 
-        if (!getUserRole(token).equals("OWNER")) {
-            throw new RuntimeException("Only owner can update venue");
-        }
-
-        return venueService.updateVenue(id, venue, getUserId(token));
+        return venueService.updateVenue(id, venue, getUserId());
     }
 
     // delete venue mapping
+    @PreAuthorize("hasRole('OWNER')")
     @DeleteMapping("/{id}")
-    public String deleteVenue(@PathVariable Long id,@RequestHeader("Authorization") String token) {
+    public String deleteVenue(@PathVariable Long id) {
 
-        if (!getUserRole(token).equals("OWNER")) {
-            throw new RuntimeException("Only owner can delete venue");
-        }
-
-        venueService.deleteVenue(id, getUserId(token));
+        venueService.deleteVenue(id, getUserId());
         return "Deleted successfully";
     }
 
-    // owner dashboard get bookings mappling
+    // owner dashboard get bookings mapping
+    @PreAuthorize("hasRole('OWNER')")
     @GetMapping("/{venueId}/bookings")
-    public List<Map<String, Object>> getOwnerBookings(@PathVariable Long venueId, @RequestParam(required = false) String date,
-            @RequestHeader("Authorization") String token) {
+    public List<Map<String, Object>> getOwnerBookings(@PathVariable Long venueId,
+            @RequestParam(required = false) String date) {
 
-        if (!getUserRole(token).equals("OWNER")) {
-            throw new RuntimeException("Only owner can view bookings");
-        }
-
-        return bookingService.getOwnerBookings(venueId, getUserId(token), date);
+        return bookingService.getOwnerBookings(venueId, getUserId(), date);
     }
 
     // booker market place
@@ -100,7 +84,7 @@ public class VenueController {
         return venueService.getMarketplaceVenues();
     }
 
-    // filter for booking available 
+    // filter for booking available
     @GetMapping("/marketplace/filter")
     public List<Map<String, Object>> filterVenues(@RequestParam String date, @RequestParam String time) {
 
@@ -112,34 +96,31 @@ public class VenueController {
     }
 
     // upload photes
+    @PreAuthorize("hasRole('OWNER')")
     @PostMapping("/{venueId}/upload")
-public String uploadPhoto(@PathVariable Long venueId, @RequestParam("file") MultipartFile file, @RequestHeader("Authorization") String token
-) throws Exception {
+    public String uploadPhoto(@PathVariable Long venueId, @RequestParam("file") MultipartFile file) throws Exception {
 
-    Long userId = getUserId(token);
+        Long userId = getUserId();
 
-    return venueService.uploadPhoto(venueId, file, userId);
-}
-
-// get images
-@GetMapping("/photo/{id}")
-public ResponseEntity<byte[]> getPhoto(@PathVariable Long id) {
-
-    VenuePhoto photo = venuePhotoRepository.findById(id).orElseThrow(() -> new RuntimeException("Photo not found"));
-
-    return ResponseEntity.ok().header("Content-Type", photo.getContentType()).body(photo.getData());
-}
-
-// delete venue
-@DeleteMapping("/{venueId}/photos/{photoId}")
-public String deletePhoto(@PathVariable Long venueId, @PathVariable Long photoId, @RequestHeader("Authorization") String token) {
-
-    Long userId = getUserId(token); 
-
-    if (!getUserRole(token).equals("OWNER")) {
-        throw new RuntimeException("Only owner can delete photos");
+        return venueService.uploadPhoto(venueId, file, userId);
     }
 
-    return venueService.deletePhoto(venueId, photoId, userId);
-}
+    // get images
+    @GetMapping("/photo/{id}")
+    public ResponseEntity<byte[]> getPhoto(@PathVariable Long id) {
+
+        VenuePhoto photo = venuePhotoRepository.findById(id).orElseThrow(() -> new RuntimeException("Photo not found"));
+
+        return ResponseEntity.ok().header("Content-Type", photo.getContentType()).body(photo.getData());
+    }
+
+    // delete venue
+    @PreAuthorize("hasRole('OWNER')")
+    @DeleteMapping("/{venueId}/photos/{photoId}")
+    public String deletePhoto(@PathVariable Long venueId, @PathVariable Long photoId) {
+
+        Long userId = getUserId();
+
+        return venueService.deletePhoto(venueId, photoId, userId);
+    }
 }

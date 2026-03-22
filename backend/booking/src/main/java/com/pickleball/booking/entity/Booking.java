@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "bookings", uniqueConstraints = @UniqueConstraint(columnNames = {
-           "venueId", "courtId", "bookingDate", "startTime"
-       }))
+        "venueId", "courtId", "bookingDate", "startTime"
+}))
 public class Booking {
 
     @Id
@@ -27,7 +27,8 @@ public class Booking {
 
     private Long userId;
 
-    private String status; 
+    private String status;
 
-    private LocalDateTime createdAt;
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

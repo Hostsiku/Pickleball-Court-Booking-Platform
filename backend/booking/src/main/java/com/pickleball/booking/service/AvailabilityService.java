@@ -34,8 +34,22 @@ public class AvailabilityService {
 
         List<Booking> bookings = bookingRepository.findByVenueIdAndBookingDate(venueId, date);
 
+        Map<Integer, List<Booking>> bookingsByCourt = new HashMap<>();
+
+        for (Booking b : bookings) {
+            bookingsByCourt
+                    .computeIfAbsent(b.getCourtId(), k -> new ArrayList<>())
+                    .add(b);
+        }
+
         // check its weekend
-        LocalDate selectedDate = LocalDate.parse(date);
+        LocalDate selectedDate;
+
+        try {
+            selectedDate = LocalDate.parse(date);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
+        }
         boolean isWeekend = selectedDate.getDayOfWeek() == DayOfWeek.SATURDAY
                 || selectedDate.getDayOfWeek() == DayOfWeek.SUNDAY;
 
@@ -57,6 +71,9 @@ public class AvailabilityService {
 
             List<Map<String, Object>> slots = new ArrayList<>();
 
+            //Get bookings only for this court
+            List<Booking> courtBookings = bookingsByCourt.getOrDefault(court, Collections.emptyList());
+
             for (int i = start; i < end; i++) {
 
                 int slotStart = i;
@@ -64,11 +81,8 @@ public class AvailabilityService {
 
                 String status = "Available";
 
-                // check booking conflict
-                for (Booking b : bookings) {
-
-                    if (b.getCourtId() != court)
-                        continue;
+                //Loop only relevant bookings
+                for (Booking b : courtBookings) {
 
                     int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
                     int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
@@ -79,7 +93,8 @@ public class AvailabilityService {
 
                         if ("IN_CART".equals(b.getStatus())) {
 
-                            boolean active = b.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(10));
+                            boolean active = b.getCreatedAt()
+                                    .isAfter(LocalDateTime.now().minusMinutes(10));
 
                             if (active) {
                                 if (b.getUserId().equals(userId)) {
@@ -93,6 +108,7 @@ public class AvailabilityService {
 
                         else if ("BOOKED".equals(b.getStatus())) {
                             status = "BOOKED";
+                            break;
                         }
                     }
                 }

@@ -6,13 +6,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.*;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -41,7 +42,11 @@ public class JwtFilter extends OncePerRequestFilter {
 
                     if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userId,null,Collections.emptyList());
+                        List<SimpleGrantedAuthority> authorities = List
+                                .of(new SimpleGrantedAuthority("ROLE_" + jwtUtil.extractRole(token)));
+
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userId,
+                                null, authorities);
 
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
@@ -49,13 +54,15 @@ public class JwtFilter extends OncePerRequestFilter {
                     }
                 } else {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("Invalid JWT Token");
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Invalid JWT Token\"}");
                     return;
                 }
 
             } catch (Exception e) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("JWT Error: " + e.getMessage());
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\": \"JWT Error\"}");
                 return;
             }
         }

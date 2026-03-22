@@ -9,6 +9,7 @@ import com.pickleball.booking.repository.VenuePhotoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -21,6 +22,9 @@ public class VenueService {
     private final VenueRepository venueRepository;
     private final BookingRepository bookingRepository;
     private final VenuePhotoRepository venuePhotoRepository;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     // create venue code
     public Venue createVenue(Venue venue, Long userId) {
@@ -63,11 +67,10 @@ public class VenueService {
 
     // get venues by id
     public Venue getVenueById(Long id) {
-        return venueRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Venue not found"));
+        return venueRepository.findById(id).orElseThrow(() -> new RuntimeException("Venue not found"));
     }
 
-    // update venues 
+    // update venues
     public Venue updateVenue(Long id, Venue updatedVenue, Long userId) {
 
         Venue venue = getVenueById(id);
@@ -113,7 +116,7 @@ public class VenueService {
     public void deleteVenue(Long id, Long userId) {
         Venue venue = getVenueById(id);
 
-        // id check validation 
+        // id check validation
         if (!venue.getOwnerId().equals(userId)) {
             throw new RuntimeException("Not your venue");
         }
@@ -132,7 +135,7 @@ public class VenueService {
             throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
         }
 
-        //validate past time
+        // validate past time
         if (parsedDate.isBefore(LocalDate.now())) {
             throw new RuntimeException("Past date not allowed");
         }
@@ -143,6 +146,12 @@ public class VenueService {
             parsedTime = LocalTime.parse(time);
         } catch (Exception e) {
             throw new RuntimeException("Invalid time format (HH:mm required)");
+        }
+
+        // prevent past time selection for today
+        if (parsedDate.equals(LocalDate.now()) &&
+                parsedTime.getHour() <= LocalTime.now().getHour()) {
+            throw new RuntimeException("Cannot select past time for today");
         }
 
         List<Venue> venues = venueRepository.findAll();
@@ -157,8 +166,7 @@ public class VenueService {
                 continue;
             }
 
-            List<Booking> bookings =
-                    bookingRepository.findByVenueIdAndBookingDate(v.getId(), date);
+            List<Booking> bookings = bookingRepository.findByVenueIdAndBookingDate(v.getId(), date);
 
             boolean available = false;
 
@@ -168,11 +176,9 @@ public class VenueService {
 
                 for (Booking b : bookings) {
 
-                    boolean isActiveCart =
-                            "IN_CART".equals(b.getStatus()) &&
+                    boolean isActiveCart = "IN_CART".equals(b.getStatus()) &&
                             b.getCreatedAt().isAfter(
-                                    java.time.LocalDateTime.now().minusMinutes(10)
-                            );
+                                    java.time.LocalDateTime.now().minusMinutes(10));
 
                     if (b.getCourtId() == court &&
                             b.getStartTime().equals(time) &&
@@ -198,9 +204,8 @@ public class VenueService {
                 item.put("courts", v.getNoOfCourts());
                 item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
 
-                List<VenuePhoto> photos = venuePhotoRepository.findByVenueId(v.getId());
-                item.put("photo", photos.isEmpty() ? null :
-                        "/api/venues/photo/" + photos.get(0).getId());
+                List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
+                item.put("photo", photos.isEmpty() ? null : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
 
                 result.add(item);
             }
@@ -224,9 +229,9 @@ public class VenueService {
             item.put("courts", v.getNoOfCourts());
             item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
 
-            List<VenuePhoto> photos = venuePhotoRepository.findByVenueId(v.getId());
-            item.put("photo", photos.isEmpty() ? null :
-                    "http://localhost:8080/api/venues/photo/" + photos.get(0).getId());
+            List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
+            item.put("photo",
+                    photos.isEmpty() ? null : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
 
             result.add(item);
         }
@@ -243,7 +248,7 @@ public class VenueService {
             throw new RuntimeException("Unauthorized");
         }
 
-        if (venuePhotoRepository.findByVenueId(venueId).size() >= 5) {
+        if (venuePhotoRepository.findByVenue_Id(venueId).size() >= 5) {
             throw new RuntimeException("Maximum 5 photos allowed");
         }
 
@@ -251,12 +256,12 @@ public class VenueService {
             throw new RuntimeException("File is empty");
         }
 
-        // if (!file.getContentType().startsWith("image/")) {
-        //     throw new RuntimeException("Only image files allowed");
-        // }
+        if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
+            throw new RuntimeException("Only image files allowed");
+        }
 
         VenuePhoto photo = new VenuePhoto();
-        photo.setVenueId(venueId);
+        photo.setVenue(venue);
         photo.setFileName(file.getOriginalFilename());
         photo.setContentType(file.getContentType());
         photo.setData(file.getBytes());
@@ -269,17 +274,17 @@ public class VenueService {
     // delete photos
     public String deletePhoto(Long venueId, Long photoId, Long userId) {
 
-    Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
+        Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
 
-    if (!venue.getOwnerId().equals(userId)) {
-        throw new RuntimeException("Unauthorized");
+        if (!venue.getOwnerId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        VenuePhoto photo = venuePhotoRepository.findByIdAndVenue_Id(photoId, venueId)
+                .orElseThrow(() -> new RuntimeException("Photo not found for this venue"));
+
+        venuePhotoRepository.delete(photo);
+
+        return "Photo deleted successfully";
     }
-
-    VenuePhoto photo = venuePhotoRepository.findByIdAndVenueId(photoId, venueId)
-            .orElseThrow(() -> new RuntimeException("Photo not found for this venue"));
-
-    venuePhotoRepository.delete(photo);
-
-    return "Photo deleted successfully";
-}
 }

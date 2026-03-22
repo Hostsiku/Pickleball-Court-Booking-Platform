@@ -10,6 +10,7 @@ import com.pickleball.booking.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
@@ -25,15 +26,6 @@ public class BookingService {
 
     private static final int CART_EXPIRY_MINUTES = 10;
 
-    // user roll validation
-    private void validateBooker(Long userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!"BOOKER".equalsIgnoreCase(user.getRole())) {
-            throw new RuntimeException("Only BOOKER can access booking features");
-        }
-    }
-
     // expire cart items after 10 min
     private void clearExpiredCart() {
         LocalDateTime expiryTime = LocalDateTime.now().minusMinutes(CART_EXPIRY_MINUTES);
@@ -45,7 +37,6 @@ public class BookingService {
     // add to cart
     public String addToCart(BookingRequest request, Long userId) {
 
-        validateBooker(userId);
         clearExpiredCart();
 
         // all feilds are required
@@ -59,7 +50,8 @@ public class BookingService {
         }
 
         // venue validation
-        Venue venue = venueRepository.findById(request.getVenueId()).orElseThrow(() -> new RuntimeException("Venue not found"));
+        Venue venue = venueRepository.findById(request.getVenueId())
+                .orElseThrow(() -> new RuntimeException("Venue not found"));
 
         // court validation
         if (request.getCourtId() < 1 || request.getCourtId() > venue.getNoOfCourts()) {
@@ -132,7 +124,11 @@ public class BookingService {
         booking.setStatus("IN_CART");
         booking.setCreatedAt(LocalDateTime.now());
 
-        bookingRepository.save(booking);
+        try {
+            bookingRepository.save(booking);
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("Slot already taken (concurrent booking)");
+        }
 
         return "Added to cart";
     }
@@ -140,16 +136,20 @@ public class BookingService {
     // get cart items
     public Map<String, Object> getCart(Long userId) {
 
-        validateBooker(userId);
+        clearExpiredCart();
 
         List<Booking> cart = bookingRepository.findByUserIdAndStatus(userId, "IN_CART");
 
-        if (cart.isEmpty()) {
-            throw new RuntimeException("Cart is empty");
-        }
-
         List<Map<String, Object>> items = new ArrayList<>();
         double total = 0;
+
+        // If cart is empty return empty response
+        if (cart.isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("totalAmount", 0);
+            response.put("items", items);
+            return response;
+        }
 
         for (Booking b : cart) {
 
@@ -182,10 +182,7 @@ public class BookingService {
     // remove cart items
     public String removeFromCart(Long id, Long userId) {
 
-        validateBooker(userId);
-
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        Booking booking = bookingRepository.findById(id).orElseThrow(() -> new RuntimeException("Booking not found"));
 
         // Check ownership
         if (!booking.getUserId().equals(userId)) {
@@ -203,10 +200,10 @@ public class BookingService {
     }
 
     // checkout option code
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Map<String, Object> checkout(Long userId) {
 
-        validateBooker(userId);
+        // validateBooker(userId);
         clearExpiredCart();
 
         List<Booking> cart = bookingRepository.findByUserIdAndStatus(userId, "IN_CART");
@@ -256,7 +253,7 @@ public class BookingService {
             }
 
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("Slot conflict detected");
+            throw new RuntimeException("One or more slots were already booked by another user. Please refresh and try again.");
         }
 
         Map<String, Object> res = new HashMap<>();
@@ -269,8 +266,6 @@ public class BookingService {
 
     // booking history
     public List<Map<String, Object>> history(Long userId) {
-
-        validateBooker(userId);
 
         List<Booking> bookings = bookingRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "BOOKED");
 
@@ -302,17 +297,18 @@ public class BookingService {
     @Transactional
     public String reschedule(Long bookingId, BookingRequest request, Long userId) {
 
-        validateBooker(userId);
         clearExpiredCart();
 
-        Booking oldBooking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        Booking oldBooking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         if (!oldBooking.getUserId().equals(userId)) {
             throw new RuntimeException("Unauthorized");
         }
 
         // validate venue exist
-        Venue venue = venueRepository.findById(request.getVenueId()).orElseThrow(() -> new RuntimeException("Venue not found"));
+        Venue venue = venueRepository.findById(request.getVenueId())
+                .orElseThrow(() -> new RuntimeException("Venue not found"));
 
         if (venue.getId() == null) {
             throw new RuntimeException("Invalid venue");
@@ -367,7 +363,6 @@ public class BookingService {
                 LocalDate.parse(oldBooking.getBookingDate()),
                 LocalTime.parse(oldBooking.getStartTime()));
 
-        
         // check within 12 hrs
         if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Cannot reschedule within 12 hours");
@@ -381,7 +376,8 @@ public class BookingService {
                         request.getDate(),
                         request.getStartTime());
 
-        if (conflict.isPresent() && "BOOKED".equals(conflict.get().getStatus())) {
+        if (conflict.isPresent() && !conflict.get().getId().equals(oldBooking.getId())
+                && "BOOKED".equals(conflict.get().getStatus())) {
             throw new RuntimeException("Slot already booked");
         }
 
@@ -394,11 +390,10 @@ public class BookingService {
         return "Rescheduled successfully";
     }
 
-    // bookings at venues
+    // bookings at venues for owner
     public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, String date) {
 
-        Venue venue = venueRepository.findById(venueId)
-                .orElseThrow(() -> new RuntimeException("Venue not found"));
+        Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
 
         if (!venue.getOwnerId().equals(userId)) {
             throw new RuntimeException("Unauthorized");
@@ -440,8 +435,6 @@ public class BookingService {
     // cancel booking
     @Transactional
     public String cancelBooking(Long bookingId, Long userId) {
-
-        validateBooker(userId);
 
         // booking exist
         Booking booking = bookingRepository.findById(bookingId)

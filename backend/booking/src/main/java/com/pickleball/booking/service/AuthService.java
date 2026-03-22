@@ -18,7 +18,7 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
 
     // for registration code
-public String register(RegisterRequest request) {
+    public String register(RegisterRequest request) {
 
         // validates all fields
         if (request.getName() == null || request.getName().isEmpty()
@@ -34,7 +34,7 @@ public String register(RegisterRequest request) {
             throw new RuntimeException("Role must be OWNER or BOOKER");
         }
 
-        // check email already exist 
+        // check email already exist
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }
@@ -50,11 +50,14 @@ public String register(RegisterRequest request) {
         return "User registered successfully";
     }
 
+    // for login code
+    public String login(AuthRequest request) {
+        if (request.getEmail() == null || request.getPassword() == null) {
+            throw new RuntimeException("Email and password required");
+        }
 
-// for login code
-public String login(AuthRequest request) {
-
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");

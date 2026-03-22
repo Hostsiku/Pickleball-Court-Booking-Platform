@@ -36,6 +36,6 @@ public class Venue {
 
     private String address;
 
-@OneToMany(mappedBy = "venueId", cascade = CascadeType.ALL)
+@OneToMany(mappedBy = "venue", cascade = CascadeType.ALL)
 private List<VenuePhoto> photos;
 }

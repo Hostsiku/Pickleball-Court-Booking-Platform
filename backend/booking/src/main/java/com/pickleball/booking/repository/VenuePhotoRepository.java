@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 
 public interface VenuePhotoRepository extends JpaRepository<VenuePhoto, Long> {
-    List<VenuePhoto> findByVenueId(Long venueId);
+    List<VenuePhoto> findByVenue_Id(Long venueId);
 
-    Optional<VenuePhoto> findByIdAndVenueId(Long id, Long venueId);
+    Optional<VenuePhoto> findByIdAndVenue_Id(Long id, Long venueId);
 }

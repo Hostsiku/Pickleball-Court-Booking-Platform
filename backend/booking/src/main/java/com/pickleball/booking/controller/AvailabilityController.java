@@ -2,6 +2,8 @@ package com.pickleball.booking.controller;
 
 import com.pickleball.booking.service.AvailabilityService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,7 @@ public class AvailabilityController {
                 .getPrincipal();
     }
 
+    @PreAuthorize("hasRole('BOOKER')")
     @GetMapping("/{venueId}")
     public Map<String, Object> getAvailability(@PathVariable Long venueId, @RequestParam String date) {
         return availabilityService.checkAvailability(venueId, date, getUserId());

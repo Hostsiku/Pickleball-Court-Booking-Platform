@@ -15,7 +15,9 @@ public class VenuePhoto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long venueId;
+    @ManyToOne
+    @JoinColumn(name = "venue_id")
+    private Venue venue;
 
     private String fileName;
     private String contentType;
