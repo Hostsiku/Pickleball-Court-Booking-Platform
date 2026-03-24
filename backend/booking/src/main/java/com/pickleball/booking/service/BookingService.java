@@ -127,7 +127,7 @@ public class BookingService {
         try {
             bookingRepository.save(booking);
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("Slot already taken (concurrent booking)");
+            throw new RuntimeException("Slot already taken");
         }
 
         return "Added to cart";
@@ -253,7 +253,8 @@ public class BookingService {
             }
 
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("One or more slots were already booked by another user. Please refresh and try again.");
+            throw new RuntimeException(
+                    "One or more slots were already booked by another user. Please refresh and try again.");
         }
 
         Map<String, Object> res = new HashMap<>();
@@ -390,6 +391,38 @@ public class BookingService {
         return "Rescheduled successfully";
     }
 
+    // cancel booking
+    @Transactional
+    public String cancelBooking(Long bookingId, Long userId) {
+
+        // booking exist
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        // Only owner can cancel
+        if (!booking.getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        // Only BOOKED bookings can be cancelled
+        if (!"BOOKED".equals(booking.getStatus())) {
+            throw new RuntimeException("Only confirmed bookings can be cancelled");
+        }
+
+        // 12 hour restriction
+        LocalDateTime bookingTime = LocalDateTime.of(
+                LocalDate.parse(booking.getBookingDate()),
+                LocalTime.parse(booking.getStartTime()));
+
+        if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot cancel within 12 hours");
+        }
+
+        bookingRepository.delete(booking);
+
+        return "Booking cancelled successfully";
+    }
+
     // bookings at venues for owner
     public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, String date) {
 
@@ -430,37 +463,5 @@ public class BookingService {
         }
 
         return result;
-    }
-
-    // cancel booking
-    @Transactional
-    public String cancelBooking(Long bookingId, Long userId) {
-
-        // booking exist
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        // Only owner can cancel
-        if (!booking.getUserId().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
-        }
-
-        // Only BOOKED bookings can be cancelled
-        if (!"BOOKED".equals(booking.getStatus())) {
-            throw new RuntimeException("Only confirmed bookings can be cancelled");
-        }
-
-        // 12 hour restriction
-        LocalDateTime bookingTime = LocalDateTime.of(
-                LocalDate.parse(booking.getBookingDate()),
-                LocalTime.parse(booking.getStartTime()));
-
-        if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Cannot cancel within 12 hours");
-        }
-
-        bookingRepository.delete(booking);
-
-        return "Booking cancelled successfully";
     }
 }

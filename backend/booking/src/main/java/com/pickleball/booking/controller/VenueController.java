@@ -51,6 +51,12 @@ public class VenueController {
     public Venue getVenue(@PathVariable Long id) {
         return venueService.getVenueById(id);
     }
+    
+    // get venue details
+    @GetMapping("/details/{id}")
+    public Map<String, Object> getVenueDeails(@PathVariable Long id) {
+        return venueService.getVenueDetails(id);
+    }
 
     // update venue mapping
     @PreAuthorize("hasRole('OWNER')")
@@ -93,6 +99,11 @@ public class VenueController {
         }
 
         return venueService.filterVenues(date, time);
+    }
+
+    @GetMapping("/search")
+    public List<Map<String, Object>> searchByLocation(@RequestParam String location) {
+        return venueService.filterByLocation(location);
     }
 
     // upload photes

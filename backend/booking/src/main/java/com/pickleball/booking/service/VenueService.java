@@ -70,6 +70,38 @@ public class VenueService {
         return venueRepository.findById(id).orElseThrow(() -> new RuntimeException("Venue not found"));
     }
 
+
+    // get venue details by id code
+    public Map<String, Object> getVenueDetails(Long id) {
+
+    Venue v = venueRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Venue not found"));
+
+    Map<String, Object> result = new HashMap<>();
+
+    result.put("id", v.getId());
+    result.put("name", v.getName());
+    result.put("location", v.getAddress());
+    result.put("description", v.getDescription());
+    result.put("courts", v.getNoOfCourts());
+
+    result.put("openTime", v.getOpenTime());
+    result.put("closeTime", v.getCloseTime());
+
+    result.put("weekdayPrice", v.getWeekdayRate());
+    result.put("weekendPrice", v.getWeekendRate());
+
+    List<String> images = new ArrayList<>();
+
+    for (VenuePhoto p : v.getPhotos()) {
+        images.add(baseUrl + "/api/venues/photo/" + p.getId());
+    }
+
+    result.put("photos", images);
+
+    return result;
+}
+
     // update venues
     public Venue updateVenue(Long id, Venue updatedVenue, Long userId) {
 
@@ -213,6 +245,42 @@ public class VenueService {
 
         return result;
     }
+
+
+   // filter by location (EXACT MATCH - CASE INSENSITIVE)
+public List<Map<String, Object>> filterByLocation(String location) {
+
+    List<Venue> venues;
+
+    if (location == null || location.trim().isEmpty()) {
+        venues = venueRepository.findAll();
+    } else {
+        venues = venueRepository.findByAddressContainingIgnoreCase(location.trim());
+    }
+
+    List<Map<String, Object>> result = new ArrayList<>();
+
+    for (Venue v : venues) {
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", v.getId());
+        item.put("name", v.getName());
+        item.put("location", v.getAddress());
+        item.put("courts", v.getNoOfCourts());
+        item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
+
+        List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
+
+        item.put("photo",
+                photos.isEmpty()
+                        ? null
+                        : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
+
+        result.add(item);
+    }
+
+    return result;
+}
 
     // market place get all venues
     public List<Map<String, Object>> getMarketplaceVenues() {

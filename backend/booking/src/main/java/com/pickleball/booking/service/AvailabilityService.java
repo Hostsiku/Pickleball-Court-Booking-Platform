@@ -20,6 +20,8 @@ public class AvailabilityService {
         this.bookingRepository = bookingRepository;
     }
 
+    LocalDate selectedDate;
+
     // availability check code
     public Map<String, Object> checkAvailability(Long venueId, String date, Long userId) {
 
@@ -28,6 +30,12 @@ public class AvailabilityService {
             throw new RuntimeException("VenueId required");
         if (date == null)
             throw new RuntimeException("Date required");
+
+        try {
+            selectedDate = LocalDate.parse(date);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
+        }
 
         // venue exist check
         Venue venue = venueRepository.findById(venueId).orElseThrow(() -> new RuntimeException("Venue not found"));
@@ -43,13 +51,6 @@ public class AvailabilityService {
         }
 
         // check its weekend
-        LocalDate selectedDate;
-
-        try {
-            selectedDate = LocalDate.parse(date);
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
-        }
         boolean isWeekend = selectedDate.getDayOfWeek() == DayOfWeek.SATURDAY
                 || selectedDate.getDayOfWeek() == DayOfWeek.SUNDAY;
 
@@ -71,7 +72,7 @@ public class AvailabilityService {
 
             List<Map<String, Object>> slots = new ArrayList<>();
 
-            //Get bookings only for this court
+            // Get bookings only for this court
             List<Booking> courtBookings = bookingsByCourt.getOrDefault(court, Collections.emptyList());
 
             for (int i = start; i < end; i++) {
@@ -81,7 +82,7 @@ public class AvailabilityService {
 
                 String status = "Available";
 
-                //Loop only relevant bookings
+                // Loop only relevant bookings
                 for (Booking b : courtBookings) {
 
                     int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);

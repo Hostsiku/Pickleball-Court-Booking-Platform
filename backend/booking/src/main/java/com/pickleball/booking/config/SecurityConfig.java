@@ -48,6 +48,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/venues/marketplace/**").permitAll()
                         .requestMatchers("/api/venues/photo/**").permitAll()
                         .requestMatchers("/api/availability/**").permitAll()
+                        .requestMatchers("/api/venues/search/**").permitAll()
+                        .requestMatchers("/api/venues/details/{id}").permitAll()
                         .anyRequest().authenticated())
 
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
