@@ -317,6 +317,7 @@ public class BookingService {
             item.put("status", status);
             item.put("canModify", canModify);
             item.put("bookedAt", b.getCreatedAt());
+            item.put("venueId", b.getVenueId());
 
             result.add(item);
         }

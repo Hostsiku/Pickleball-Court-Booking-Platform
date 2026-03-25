@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import API from "../services/api";
 import { useNavigate } from "react-router-dom";
 
-const SlotBooking = ({ venueId }) => {
+const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
 
   const [data, setData] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
@@ -19,16 +19,48 @@ const SlotBooking = ({ venueId }) => {
 
   const today = getLocalDate();
 
+  // ✅ LOAD AVAILABILITY
   useEffect(() => {
     API.get(`/availability/${venueId}?date=${today}`)
       .then(res => setData(res.data))
       .catch(err => console.log(err));
   }, [venueId, today]);
 
-  // Get all unique time slots (from first court)
   const timeSlots = data?.courts?.[0]?.slots || [];
 
-  // add to cart button work
+  // ✅ HANDLE SLOT CLICK
+  const handleClick = (courtId, time, status) => {
+
+    if (status === "BOOKED" || status === "Unavailable") return;
+
+    const [startTime, endTime] = time.split(" - ");
+
+    const slotObj = {
+      venueId,
+      courtId,
+      date: today,
+      startTime,
+      endTime
+    };
+
+    const key = `${courtId}-${startTime}`;
+    const exists = selectedSlots.find(s => s.key === key);
+
+    // 🔥 RESCHEDULE MODE → ONLY ONE SLOT
+    if (isReschedule) {
+      setSelectedSlots([{ ...slotObj, key }]);
+      return;
+    }
+
+    // NORMAL MULTI SELECT
+    if (exists) {
+      setSelectedSlots(prev => prev.filter(s => s.key !== key));
+    } else {
+      setSelectedSlots(prev => [...prev, { ...slotObj, key }]);
+    }
+  };
+
+  // ✅ ADD TO CART
   const handleAddToCart = async () => {
 
     setError("");
@@ -54,50 +86,46 @@ const SlotBooking = ({ venueId }) => {
           date: slot.date,
           startTime: slot.startTime,
           endTime: slot.endTime
-        }, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("user").replace(/"/g, "")}`
-          }
         });
       }
 
       alert("Added to cart ✅");
-      window.location.reload(); 
       setSelectedSlots([]);
 
     } catch (err) {
       console.log(err);
-      setError(err.response?.data?.message || "Failed to add");
+      setError(err.response?.data || "Failed to add");
     }
   };
 
-  // handle clik option
-  const handleClick = (courtId, time, status) => {
+  // ✅ RESCHEDULE
+  const handleReschedule = async () => {
 
-    if (status === "BOOKED" || status === "Unavailable") return;
+    if (selectedSlots.length !== 1) {
+      alert("Select exactly one slot");
+      return;
+    }
 
-    // split time "10:00 - 11:00"
-    const [startTime, endTime] = time.split(" - ");
+    const slot = selectedSlots[0];
 
-    const slotObj = {
-      venueId,
-      courtId,
-      date: today,
-      startTime,
-      endTime
-    };
+    try {
+      await API.put(`/booking/reschedule/${bookingId}`, {
+        venueId: slot.venueId,
+        courtId: slot.courtId,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      });
 
-    const key = `${courtId}-${startTime}`;
+      alert("Rescheduled successfully ✅");
+      navigate("/profile");
 
-    const exists = selectedSlots.find(s => s.key === key);
-
-    if (exists) {
-      setSelectedSlots(prev => prev.filter(s => s.key !== key));
-    } else {
-      setSelectedSlots(prev => [...prev, { ...slotObj, key }]);
+    } catch (err) {
+      alert(err.response?.data || "Error");
     }
   };
 
+  // ✅ COLORS
   const getColor = (status, isSelected) => {
 
     if (isSelected) return "bg-blue-500";
@@ -122,7 +150,7 @@ const SlotBooking = ({ venueId }) => {
     <div className="mt-10 bg-white p-6 rounded-xl shadow">
 
       <h2 className="text-xl font-bold mb-6">
-        Select Time Slot
+        {isReschedule ? "Select New Slot" : "Select Time Slot"}
       </h2>
 
       <div className="overflow-x-auto">
@@ -146,12 +174,10 @@ const SlotBooking = ({ venueId }) => {
 
               <tr key={rowIndex} className="border-t">
 
-                {/* TIME COLUMN */}
                 <td className="p-3 font-medium">
                   {slot.time}
                 </td>
 
-                {/* COURTS */}
                 {data.courts.map(court => {
 
                   const currentSlot = court.slots[rowIndex];
@@ -195,16 +221,35 @@ const SlotBooking = ({ venueId }) => {
         <span className="text-gray-600">● Unavailable</span>
       </div>
 
-      <button
-        onClick={handleAddToCart}
-        disabled={selectedSlots.length === 0}
-        className={`mt-6 px-6 py-3 rounded-lg text-white 
-    ${selectedSlots.length === 0
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700"}`}
-      >
-        Add to Cart
-      </button>
+      {/* 🔥 BUTTON SWITCH */}
+      {isReschedule ? (
+
+        <button
+          onClick={handleReschedule}
+          disabled={selectedSlots.length !== 1}
+          className={`mt-6 px-6 py-3 rounded-lg text-white 
+            ${selectedSlots.length !== 1
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"}`}
+        >
+          Confirm Reschedule
+        </button>
+
+      ) : (
+
+        <button
+          onClick={handleAddToCart}
+          disabled={selectedSlots.length === 0}
+          className={`mt-6 px-6 py-3 rounded-lg text-white 
+            ${selectedSlots.length === 0
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700"}`}
+        >
+          Add to Cart
+        </button>
+
+      )}
+
       {error && <p className="text-red-500 mt-2">{error}</p>}
 
     </div>

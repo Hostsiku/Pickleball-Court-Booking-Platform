@@ -19,7 +19,7 @@ const Profile = () => {
   const fetchBookings = () => {
     API.get("/booking/history")
       .then(res => {
-        console.log("BOOKINGS:", res.data); // 🔥 DEBUG
+        console.log("BOOKINGS:", res.data);
         setBookings(res.data);
       })
       .catch(err => console.log(err));
@@ -47,15 +47,21 @@ const Profile = () => {
     }
   };
 
-  // ✅ RESCHEDULE NAVIGATION (NEW FLOW)
+  // ✅ NEW RESCHEDULE FLOW (🔥 IMPORTANT CHANGE)
   const handleReschedule = (booking) => {
-    if (!booking?.bookingId) {
-      alert("Booking ID missing");
-      console.log("ERROR BOOKING:", booking);
+
+    if (!booking?.venueId) {
+      alert("Venue not found");
       return;
     }
 
-    navigate(`/reschedule/${booking.bookingId}`);
+    navigate(`/venues/${booking.venueId}`, {
+      state: {
+        isReschedule: true,
+        bookingId: booking.bookingId,
+        bookingData: booking
+      }
+    });
   };
 
   return (
@@ -130,7 +136,7 @@ const Profile = () => {
 
               return (
                 <div
-                  key={b.bookingId || Math.random()}
+                  key={b.bookingId}
                   className="bg-white rounded-xl shadow p-4 flex justify-between items-center"
                 >
 
@@ -217,7 +223,7 @@ const Profile = () => {
 
       </div>
 
-      {/* ONLY DETAILS MODAL NOW */}
+      {/* DETAILS MODAL */}
       {showDetails && (
         <BookingDetailsModal
           booking={selectedBooking}
