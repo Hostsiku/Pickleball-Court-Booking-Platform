@@ -48,6 +48,12 @@ const Navbar = () => {
           </Link>
         )}
 
+        {user && (
+          <Link to="/cart" className="hover:text-green-600">
+            Cart
+          </Link>
+        )}
+
       </div>
 
       {/* RIGHT SIDE */}

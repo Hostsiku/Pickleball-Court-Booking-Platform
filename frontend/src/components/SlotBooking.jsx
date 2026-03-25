@@ -1,57 +1,102 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 const SlotBooking = ({ venueId }) => {
 
   const [data, setData] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const getLocalDate = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
-const today = getLocalDate();
+  const today = getLocalDate();
 
-useEffect(() => {
-  console.log("VENUE ID:", venueId);
-  console.log("DATE SENT:", today);
-
-  API.get(`/availability/${venueId}?date=${today}`)
-    .then(res => {
-      console.log("API SUCCESS:", res.data);
-      setData(res.data);
-    })
-    .catch(err => {
-      console.log("API ERROR:", err.response?.data || err.message);
-    });
-}, [venueId]);
+  useEffect(() => {
+    API.get(`/availability/${venueId}?date=${today}`)
+      .then(res => setData(res.data))
+      .catch(err => console.log(err));
+  }, [venueId, today]);
 
   // Get all unique time slots (from first court)
   const timeSlots = data?.courts?.[0]?.slots || [];
 
-const handleClick = (courtId, time, status) => {
+  // add to cart button work
+  const handleAddToCart = async () => {
 
-  const user = JSON.parse(localStorage.getItem("user"));
+    setError("");
 
-  if (!user) {
-    alert("Please login to select slots");
-    return;
-  }
+    const user = JSON.parse(localStorage.getItem("user"));
 
-  if (status === "BOOKED" || status === "Unavailable") return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-  const key = `${courtId}-${time}`;
+    if (selectedSlots.length === 0) {
+      setError("Please select at least one slot");
+      return;
+    }
 
-  if (selectedSlots.includes(key)) {
-    setSelectedSlots(prev => prev.filter(s => s !== key));
-  } else {
-    setSelectedSlots(prev => [...prev, key]);
-  }
-};
+    try {
+
+      for (let slot of selectedSlots) {
+        await API.post("/booking/add", {
+          venueId: slot.venueId,
+          courtId: slot.courtId,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime
+        }, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("user").replace(/"/g, "")}`
+          }
+        });
+      }
+
+      alert("Added to cart ✅");
+
+      setSelectedSlots([]);
+
+    } catch (err) {
+      console.log(err);
+      setError(err.response?.data?.message || "Failed to add");
+    }
+  };
+
+  // handle clik option
+  const handleClick = (courtId, time, status) => {
+
+    if (status === "BOOKED" || status === "Unavailable") return;
+
+    // split time "10:00 - 11:00"
+    const [startTime, endTime] = time.split(" - ");
+
+    const slotObj = {
+      venueId,
+      courtId,
+      date: today,
+      startTime,
+      endTime
+    };
+
+    const key = `${courtId}-${startTime}`;
+
+    const exists = selectedSlots.find(s => s.key === key);
+
+    if (exists) {
+      setSelectedSlots(prev => prev.filter(s => s.key !== key));
+    } else {
+      setSelectedSlots(prev => [...prev, { ...slotObj, key }]);
+    }
+  };
 
   const getColor = (status, isSelected) => {
 
@@ -69,13 +114,6 @@ const handleClick = (courtId, time, status) => {
       default:
         return "";
     }
-  };
-
-  const handleAddToCart = () => {
-    console.log("Selected slots:", selectedSlots);
-
-    // 👉 NEXT STEP: call backend add-to-cart API
-    alert("Slots added to cart (next step backend)");
   };
 
   if (!data) return <p className="p-6">Loading slots...</p>;
@@ -119,8 +157,9 @@ const handleClick = (courtId, time, status) => {
                   const currentSlot = court.slots[rowIndex];
                   const status = currentSlot.status;
 
-                  const key = `${court.courtId}-${currentSlot.time}`;
-                  const isSelected = selectedSlots.includes(key);
+                  const startTime = currentSlot.time.split(" - ")[0];
+                  const key = `${court.courtId}-${startTime}`;
+                  const isSelected = selectedSlots.some(s => s.key === key);
 
                   return (
                     <td key={court.courtId} className="p-2 text-center">
@@ -158,10 +197,15 @@ const handleClick = (courtId, time, status) => {
 
       <button
         onClick={handleAddToCart}
-        className="mt-6 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700"
+        disabled={selectedSlots.length === 0}
+        className={`mt-6 px-6 py-3 rounded-lg text-white 
+    ${selectedSlots.length === 0
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"}`}
       >
         Add to Cart
       </button>
+      {error && <p className="text-red-500 mt-2">{error}</p>}
 
     </div>
   );

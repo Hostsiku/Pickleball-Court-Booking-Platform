@@ -24,12 +24,6 @@ const VenueDetails = () => {
             });
     }, [id]);
     const handleBookNow = () => {
-        const user = JSON.parse(localStorage.getItem("user"));
-
-        if (!user) {
-            navigate("/login");
-            return;
-        }
 
         setShowSlots(true);
 

@@ -27,6 +27,7 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+                System.out.println("JWT FILTER HIT");
 
         String authHeader = request.getHeader("Authorization");
 
@@ -39,6 +40,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 if (jwtUtil.validateToken(token)) {
 
                     Long userId = jwtUtil.extractUserId(token);
+                    System.out.println("ROLE FROM TOKEN: " + jwtUtil.extractRole(token));
 
                     if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
@@ -52,6 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
+                    
                 } else {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
