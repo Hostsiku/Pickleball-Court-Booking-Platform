@@ -7,8 +7,11 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
   const [data, setData] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+
   const navigate = useNavigate();
 
+  // ✅ GET TODAY DATE
   const getLocalDate = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -17,14 +20,28 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     return `${year}-${month}-${day}`;
   };
 
-  const today = getLocalDate();
-
-  // ✅ LOAD AVAILABILITY
+  // ✅ SET DEFAULT DATE
   useEffect(() => {
-    API.get(`/availability/${venueId}?date=${today}`)
-      .then(res => setData(res.data))
+    if (isReschedule && bookingData?.date) {
+      setSelectedDate(bookingData.date); // 🔥 existing booking date
+    } else {
+      setSelectedDate(getLocalDate());
+    }
+  }, [isReschedule, bookingData]);
+
+  // ✅ LOAD AVAILABILITY BASED ON DATE
+  useEffect(() => {
+
+    if (!selectedDate) return;
+
+    API.get(`/availability/${venueId}?date=${selectedDate}`)
+      .then(res => {
+        setData(res.data);
+        setSelectedSlots([]); // reset selection on date change
+      })
       .catch(err => console.log(err));
-  }, [venueId, today]);
+
+  }, [venueId, selectedDate]);
 
   const timeSlots = data?.courts?.[0]?.slots || [];
 
@@ -38,7 +55,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     const slotObj = {
       venueId,
       courtId,
-      date: today,
+      date: selectedDate,
       startTime,
       endTime
     };
@@ -52,7 +69,6 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
       return;
     }
 
-    // NORMAL MULTI SELECT
     if (exists) {
       setSelectedSlots(prev => prev.filter(s => s.key !== key));
     } else {
@@ -80,13 +96,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     try {
 
       for (let slot of selectedSlots) {
-        await API.post("/booking/add", {
-          venueId: slot.venueId,
-          courtId: slot.courtId,
-          date: slot.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime
-        });
+        await API.post("/booking/add", slot);
       }
 
       alert("Added to cart ✅");
@@ -109,13 +119,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     const slot = selectedSlots[0];
 
     try {
-      await API.put(`/booking/reschedule/${bookingId}`, {
-        venueId: slot.venueId,
-        courtId: slot.courtId,
-        date: slot.date,
-        startTime: slot.startTime,
-        endTime: slot.endTime
-      });
+      await API.put(`/booking/reschedule/${bookingId}`, slot);
 
       alert("Rescheduled successfully ✅");
       navigate("/profile");
@@ -149,9 +153,21 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
   return (
     <div className="mt-10 bg-white p-6 rounded-xl shadow">
 
-      <h2 className="text-xl font-bold mb-6">
+      <h2 className="text-xl font-bold mb-4">
         {isReschedule ? "Select New Slot" : "Select Time Slot"}
       </h2>
+
+      {/* 🔥 DATE PICKER */}
+      <div className="mb-6 flex items-center gap-4">
+        <label className="font-medium">Select Date:</label>
+        <input
+          type="date"
+          value={selectedDate}
+          min={getLocalDate()}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        />
+      </div>
 
       <div className="overflow-x-auto">
 
@@ -221,7 +237,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
         <span className="text-gray-600">● Unavailable</span>
       </div>
 
-      {/* 🔥 BUTTON SWITCH */}
+      {/* BUTTON */}
       {isReschedule ? (
 
         <button

@@ -51,7 +51,7 @@ public class VenueController {
     public Venue getVenue(@PathVariable Long id) {
         return venueService.getVenueById(id);
     }
-    
+
     // get venue details
     @GetMapping("/details/{id}")
     public Map<String, Object> getVenueDeails(@PathVariable Long id) {
@@ -73,6 +73,13 @@ public class VenueController {
 
         venueService.deleteVenue(id, getUserId());
         return "Deleted successfully";
+    }
+
+    // get venues by owner id
+    @PreAuthorize("hasRole('OWNER')")
+    @GetMapping("/owner")
+    public List<Venue> getOwnerVenues() {
+        return venueService.getVenuesByOwner(getUserId());
     }
 
     // owner dashboard get bookings mapping

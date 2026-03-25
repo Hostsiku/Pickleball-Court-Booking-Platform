@@ -7,4 +7,6 @@ import java.util.*;
 public interface VenueRepository extends JpaRepository<Venue, Long> {
 
 List<Venue> findByAddressContainingIgnoreCase(String address);
+
+List<Venue> findByOwnerId(Long ownerId);
 }

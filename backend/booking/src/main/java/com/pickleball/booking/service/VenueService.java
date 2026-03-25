@@ -355,4 +355,9 @@ public List<Map<String, Object>> filterByLocation(String location) {
 
         return "Photo deleted successfully";
     }
+
+    // get venues by owner id
+    public List<Venue> getVenuesByOwner(Long ownerId) {
+    return venueRepository.findByOwnerId(ownerId);
+}
 }

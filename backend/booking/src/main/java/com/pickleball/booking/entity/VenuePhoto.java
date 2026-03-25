@@ -1,5 +1,7 @@
 package com.pickleball.booking.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,6 +19,7 @@ public class VenuePhoto {
 
     @ManyToOne
     @JoinColumn(name = "venue_id")
+    @JsonIgnore
     private Venue venue;
 
     private String fileName;

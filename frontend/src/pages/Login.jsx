@@ -17,10 +17,20 @@ const Login = () => {
 
       const res = await API.post("/auth/login", form);
 
-      login(res.data);
-      navigate("/");
+      const user = res.data;
+
+      // ✅ Save user in context + localStorage (already handled inside login())
+      login(user);
+
+      // ✅ ROLE BASED REDIRECT 🔥
+      if (user.role === "OWNER") {
+        navigate("/owner/dashboard");
+      } else {
+        navigate("/");
+      }
+
     } catch (err) {
-      setError("Invalid email or password");
+      setError(err.response?.data || "Invalid email or password");
     }
   };
 
@@ -57,7 +67,10 @@ const Login = () => {
         {/* REGISTER LINK */}
         <p className="text-sm text-center mt-4 text-gray-600">
           New user?{" "}
-          <Link to="/register" className="text-green-600 font-semibold hover:underline">
+          <Link
+            to="/register"
+            className="text-green-600 font-semibold hover:underline"
+          >
             Register here
           </Link>
         </p>
