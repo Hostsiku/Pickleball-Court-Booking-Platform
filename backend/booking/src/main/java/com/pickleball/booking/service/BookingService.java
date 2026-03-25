@@ -266,108 +266,109 @@ public class BookingService {
     }
 
     // booking history
-public List<Map<String, Object>> history(Long userId) {
+    public List<Map<String, Object>> history(Long userId) {
 
-    // 🔥 GET ALL BOOKINGS (not just BOOKED)
-    List<Booking> bookings = bookingRepository
-            .findByUserIdOrderByCreatedAtDesc(userId);
+        // 🔥 GET ALL BOOKINGS (not just BOOKED)
+        List<Booking> bookings = bookingRepository
+                .findByUserIdOrderByCreatedAtDesc(userId);
 
-    List<Map<String, Object>> result = new ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
 
-    for (Booking b : bookings) {
+        for (Booking b : bookings) {
 
-        Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
+            Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
 
-        LocalDate date = LocalDate.parse(b.getBookingDate());
-        LocalTime time = LocalTime.parse(b.getStartTime());
-        LocalDateTime bookingDateTime = LocalDateTime.of(date, time);
+            LocalDate date = LocalDate.parse(b.getBookingDate());
+            LocalTime time = LocalTime.parse(b.getStartTime());
+            LocalDateTime bookingDateTime = LocalDateTime.of(date, time);
 
-        // ✅ STATUS LOGIC
-        String status;
+            // ✅ STATUS LOGIC
+            String status;
 
-        if ("CANCELLED".equals(b.getStatus())) {
-            status = "CANCELLED";
-        } else if (bookingDateTime.isAfter(LocalDateTime.now())) {
-            status = "UPCOMING";
-        } else {
-            status = "PAST";
+            if ("CANCELLED".equals(b.getStatus())) {
+                status = "CANCELLED";
+            } else if (bookingDateTime.isAfter(LocalDateTime.now())) {
+                status = "UPCOMING";
+            } else {
+                status = "PAST";
+            }
+
+            // ✅ 12 HOUR RULE (for reschedule/cancel)
+            boolean canModify = bookingDateTime.minusHours(12)
+                    .isAfter(LocalDateTime.now());
+
+            // ✅ PRICE CALCULATION
+            boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
+                    || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+
+            double price = isWeekend
+                    ? venue.getWeekendRate()
+                    : venue.getWeekdayRate();
+
+            // ✅ RESPONSE MAP
+            Map<String, Object> item = new HashMap<>();
+
+            item.put("bookingId", b.getId()); // IMPORTANT
+            item.put("venueName", venue.getName());
+            item.put("court", "Court " + b.getCourtId());
+            item.put("date", b.getBookingDate());
+            item.put("time", b.getStartTime() + " - " + b.getEndTime());
+            item.put("amountPaid", price);
+            item.put("status", status);
+            item.put("canModify", canModify);
+            item.put("bookedAt", b.getCreatedAt());
+
+            result.add(item);
         }
 
-        // ✅ 12 HOUR RULE (for reschedule/cancel)
-        boolean canModify = bookingDateTime.minusHours(12)
-                .isAfter(LocalDateTime.now());
-
-        // ✅ PRICE CALCULATION
-        boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY
-                || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-
-        double price = isWeekend
-                ? venue.getWeekendRate()
-                : venue.getWeekdayRate();
-
-        // ✅ RESPONSE MAP
-        Map<String, Object> item = new HashMap<>();
-
-        item.put("bookingId", b.getId()); // IMPORTANT
-        item.put("venueName", venue.getName());
-        item.put("court", "Court " + b.getCourtId());
-        item.put("date", b.getBookingDate());
-        item.put("time", b.getStartTime() + " - " + b.getEndTime());
-        item.put("amountPaid", price);
-        item.put("status", status);
-        item.put("canModify", canModify);
-        item.put("bookedAt", b.getCreatedAt());
-
-        result.add(item);
+        return result;
     }
-
-    return result;
-}
 
     // reschedule booking code
     @Transactional
     public String reschedule(Long bookingId, BookingRequest request, Long userId) {
 
-        clearExpiredCart();
-
+        // 🔍 Fetch booking
         Booking oldBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
+        // 🔐 Ownership check
         if (!oldBooking.getUserId().equals(userId)) {
             throw new RuntimeException("Unauthorized");
         }
 
-        // validate venue exist
+        // ✅ Only BOOKED can reschedule
+        if (!"BOOKED".equals(oldBooking.getStatus())) {
+            throw new RuntimeException("Only confirmed bookings can be rescheduled");
+        }
+
+        // 🏟️ Validate venue
         Venue venue = venueRepository.findById(request.getVenueId())
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
 
-        if (venue.getId() == null) {
-            throw new RuntimeException("Invalid venue");
+        // 🔒 Same venue restriction
+        if (!oldBooking.getVenueId().equals(request.getVenueId())) {
+            throw new RuntimeException("Reschedule allowed only within same venue");
         }
 
-        // validate code exist in venue
+        // 🏸 Court validation
         if (request.getCourtId() < 1 || request.getCourtId() > venue.getNoOfCourts()) {
             throw new RuntimeException("Invalid courtId. Venue has only " + venue.getNoOfCourts() + " courts");
         }
 
-        // allow only same venue
-        if (!oldBooking.getVenueId().equals(request.getVenueId())) {
-            throw new RuntimeException("Reschedule only allowed within same venue");
-        }
-
-        // date validation
-        LocalDate parsedDate;
+        // 📅 Date validation
+        LocalDate date;
         try {
-            parsedDate = LocalDate.parse(request.getDate());
+            date = LocalDate.parse(request.getDate());
         } catch (Exception e) {
-            throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
+            throw new RuntimeException("Invalid date format (yyyy-MM-dd)");
         }
 
-        if (parsedDate.isBefore(LocalDate.now())) {
+        if (date.isBefore(LocalDate.now())) {
             throw new RuntimeException("Past date not allowed");
         }
 
-        // time validation
+        // ⏰ Time validation
         LocalTime start;
         LocalTime end;
 
@@ -375,14 +376,14 @@ public List<Map<String, Object>> history(Long userId) {
             start = LocalTime.parse(request.getStartTime());
             end = LocalTime.parse(request.getEndTime());
         } catch (Exception e) {
-            throw new RuntimeException("Invalid time format (HH:mm required)");
+            throw new RuntimeException("Invalid time format (HH:mm)");
         }
 
         if (!end.equals(start.plusHours(1))) {
-            throw new RuntimeException("Only 1-hour slot booking allowed");
+            throw new RuntimeException("Only 1-hour slots allowed");
         }
 
-        // check within times
+        // 🕐 Venue working hours
         int open = Integer.parseInt(venue.getOpenTime().split(":")[0]);
         int close = Integer.parseInt(venue.getCloseTime().split(":")[0]);
 
@@ -390,78 +391,96 @@ public List<Map<String, Object>> history(Long userId) {
             throw new RuntimeException("Slot outside venue working hours");
         }
 
-        LocalDateTime bookingTime = LocalDateTime.of(
+        // ⛔ 12-hour restriction
+        LocalDateTime oldBookingTime = LocalDateTime.of(
                 LocalDate.parse(oldBooking.getBookingDate()),
                 LocalTime.parse(oldBooking.getStartTime()));
 
-        // check within 12 hrs
-        if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
+        if (oldBookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Cannot reschedule within 12 hours");
         }
 
-        // check duplication and conflict
-        Optional<Booking> conflict = bookingRepository
-                .findByVenueIdAndCourtIdAndBookingDateAndStartTime(
+        // ❗ Conflict check (IMPORTANT FIX)
+        boolean exists = bookingRepository
+                .existsByVenueIdAndCourtIdAndBookingDateAndStartTimeAndStatus(
                         request.getVenueId(),
                         request.getCourtId(),
                         request.getDate(),
-                        request.getStartTime());
+                        request.getStartTime(),
+                        "BOOKED");
 
-        if (conflict.isPresent() && !conflict.get().getId().equals(oldBooking.getId())
-                && "BOOKED".equals(conflict.get().getStatus())) {
+        if (exists &&
+                !(oldBooking.getBookingDate().equals(request.getDate())
+                        && oldBooking.getStartTime().equals(request.getStartTime())
+                        && oldBooking.getCourtId() == request.getCourtId())) {
+
             throw new RuntimeException("Slot already booked");
         }
 
+        // ✅ UPDATE BOOKING
         oldBooking.setBookingDate(request.getDate());
         oldBooking.setStartTime(request.getStartTime());
         oldBooking.setEndTime(request.getEndTime());
+        oldBooking.setCourtId(request.getCourtId());
 
         bookingRepository.save(oldBooking);
 
         return "Rescheduled successfully";
     }
 
-// cancel booking
-@Transactional
-public String cancelBooking(Long bookingId, Long userId) {
+    // get bookings
+    public Booking getBookingById(Long id, Long userId) {
 
-    // 🔍 Check booking exists
-    Booking booking = bookingRepository.findById(bookingId)
-            .orElseThrow(() -> new RuntimeException("Booking not found"));
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-    // 🔒 Ownership check
-    if (!booking.getUserId().equals(userId)) {
-        throw new RuntimeException("Unauthorized");
+        if (!booking.getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        return booking;
     }
 
-    // ❌ Already cancelled
-    if ("CANCELLED".equals(booking.getStatus())) {
-        throw new RuntimeException("Booking already cancelled");
+    // cancel booking
+    @Transactional
+    public String cancelBooking(Long bookingId, Long userId) {
+
+        // 🔍 Check booking exists
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        // 🔒 Ownership check
+        if (!booking.getUserId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        // ❌ Already cancelled
+        if ("CANCELLED".equals(booking.getStatus())) {
+            throw new RuntimeException("Booking already cancelled");
+        }
+
+        // ❌ Only BOOKED bookings can be cancelled
+        if (!"BOOKED".equals(booking.getStatus())) {
+            throw new RuntimeException("Only confirmed bookings can be cancelled");
+        }
+
+        // ⏰ Booking time
+        LocalDateTime bookingTime = LocalDateTime.of(
+                LocalDate.parse(booking.getBookingDate()),
+                LocalTime.parse(booking.getStartTime()));
+
+        // ⛔ 12-hour restriction
+        if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot cancel within 12 hours of booking time");
+        }
+
+        // ✅ UPDATE STATUS INSTEAD OF DELETE
+        booking.setStatus("CANCELLED");
+
+        bookingRepository.save(booking);
+
+        return "Booking cancelled successfully";
     }
-
-    // ❌ Only BOOKED bookings can be cancelled
-    if (!"BOOKED".equals(booking.getStatus())) {
-        throw new RuntimeException("Only confirmed bookings can be cancelled");
-    }
-
-    // ⏰ Booking time
-    LocalDateTime bookingTime = LocalDateTime.of(
-            LocalDate.parse(booking.getBookingDate()),
-            LocalTime.parse(booking.getStartTime())
-    );
-
-    // ⛔ 12-hour restriction
-    if (bookingTime.minusHours(12).isBefore(LocalDateTime.now())) {
-        throw new RuntimeException("Cannot cancel within 12 hours of booking time");
-    }
-
-    // ✅ UPDATE STATUS INSTEAD OF DELETE
-    booking.setStatus("CANCELLED");
-
-    bookingRepository.save(booking);
-
-    return "Booking cancelled successfully";
-}
 
     // bookings at venues for owner
     public List<Map<String, Object>> getOwnerBookings(Long venueId, Long userId, String date) {

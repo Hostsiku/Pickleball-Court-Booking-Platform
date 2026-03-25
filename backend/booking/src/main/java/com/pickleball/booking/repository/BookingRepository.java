@@ -24,4 +24,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStatusAndCreatedAtBefore(String status, LocalDateTime time);
 
     List<Booking> findByVenueIdAndStatus(Long venueId, String status);
+
+boolean existsByVenueIdAndCourtIdAndBookingDateAndStartTimeAndStatus(
+        Long venueId,
+        int courtId,   
+        String bookingDate,
+        String startTime,
+        String status
+);
 }

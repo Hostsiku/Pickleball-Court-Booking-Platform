@@ -1,12 +1,14 @@
 package com.pickleball.booking.controller;
 
 import com.pickleball.booking.dto.BookingRequest;
+import com.pickleball.booking.entity.Booking;
 import com.pickleball.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Map;
 
@@ -62,8 +64,15 @@ public class BookingController {
     // reschedule code
     @PreAuthorize("hasRole('BOOKER')")
     @PutMapping("/reschedule/{id}")
-    public String reschedule(@PathVariable Long id, @Valid @RequestBody BookingRequest request) {
-        return bookingService.reschedule(id, request, getUserId());
+    public String reschedule(@PathVariable Long id, @Valid @RequestBody BookingRequest request, Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return bookingService.reschedule(id, request, userId);
+    }
+
+    @PreAuthorize("hasRole('BOOKER')")
+    @GetMapping("/{id}")
+    public Booking getBooking(@PathVariable Long id) {
+        return bookingService.getBookingById(id, getUserId());
     }
 
     // cancel booking

@@ -8,6 +8,7 @@ import Register from "./pages/Register";
 import VenueDetails from "./pages/VenueDetails";
 import Profile from "./pages/Profile";
 import Cart from "./pages/Cart";
+import Reschedule from "./components/RescheduleModal";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/venues/:id" element={<VenueDetails />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/reschedule/:bookingId" element={<Reschedule />} />
       </Routes>
     </>
   );

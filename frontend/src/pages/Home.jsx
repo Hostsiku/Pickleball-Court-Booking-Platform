@@ -111,7 +111,7 @@ const Home = () => {
           <div className="col-span-2">
             <img
               src={big_photo}
-              className="w-full h-80 object-cover rounded-xl shadow hover:scale-105 transition"
+              className="w-full h-80 object-cover rounded-xl shadow hover:scale-[1.025] transition"
             />
           </div>
 

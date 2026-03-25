@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
 import SlotBooking from "../components/SlotBooking";
+import { useLocation } from "react-router-dom";
 
 const VenueDetails = () => {
 

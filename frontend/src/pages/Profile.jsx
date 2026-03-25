@@ -1,30 +1,61 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import BookingDetailsModal from "../components/BookingDetailsModal";
 
 const Profile = () => {
 
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [bookings, setBookings] = useState([]);
   const [tab, setTab] = useState("UPCOMING");
 
-  useEffect(() => {
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  // ✅ FETCH BOOKINGS
+  const fetchBookings = () => {
     API.get("/booking/history")
-      .then(res => setBookings(res.data))
+      .then(res => {
+        console.log("BOOKINGS:", res.data); // 🔥 DEBUG
+        setBookings(res.data);
+      })
       .catch(err => console.log(err));
+  };
+
+  useEffect(() => {
+    fetchBookings();
   }, []);
 
   const filtered = bookings.filter(b => b.status === tab);
 
+  // ✅ CANCEL
   const handleCancel = async (id) => {
+    if (!id) {
+      alert("Invalid booking");
+      return;
+    }
+
     try {
       await API.delete(`/booking/cancel/${id}`);
       alert("Cancelled successfully");
-      window.location.reload();
+      fetchBookings();
     } catch (err) {
       alert(err.response?.data || "Error");
     }
+  };
+
+  // ✅ RESCHEDULE NAVIGATION (NEW FLOW)
+  const handleReschedule = (booking) => {
+    if (!booking?.bookingId) {
+      alert("Booking ID missing");
+      console.log("ERROR BOOKING:", booking);
+      return;
+    }
+
+    navigate(`/reschedule/${booking.bookingId}`);
   };
 
   return (
@@ -35,9 +66,7 @@ const Profile = () => {
         {/* LEFT SIDEBAR */}
         <div className="bg-white rounded-xl shadow p-6 h-fit">
 
-          {/* PROFILE */}
           <div className="flex flex-col items-center">
-
             <div className="w-24 h-24 bg-gray-300 rounded-full mb-4"></div>
 
             <h2 className="text-lg font-bold">
@@ -47,12 +76,9 @@ const Profile = () => {
             <p className="text-sm text-gray-500">
               {user?.email || "user@email.com"}
             </p>
-
           </div>
 
-          {/* MENU */}
           <div className="mt-6">
-
             <div className="bg-green-600 text-white px-4 py-3 rounded-lg mb-2">
               All Bookings
             </div>
@@ -64,7 +90,6 @@ const Profile = () => {
             <div className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">
               Feedback
             </div>
-
           </div>
 
         </div>
@@ -105,20 +130,18 @@ const Profile = () => {
 
               return (
                 <div
-                  key={b.bookingId}
+                  key={b.bookingId || Math.random()}
                   className="bg-white rounded-xl shadow p-4 flex justify-between items-center"
                 >
 
                   {/* LEFT */}
                   <div className="flex items-center gap-6">
 
-                    {/* DATE */}
                     <div className="text-center border-r pr-6">
                       <p className="text-2xl font-bold">{day}</p>
                       <p className="text-sm text-gray-500">{month}</p>
                     </div>
 
-                    {/* DETAILS */}
                     <div>
                       <p className="font-semibold text-lg">
                         {b.venueName}
@@ -139,22 +162,31 @@ const Profile = () => {
 
                   </div>
 
-                  {/* RIGHT ACTIONS */}
+                  {/* RIGHT */}
                   <div className="flex items-center gap-3">
 
-                    <button className="px-4 py-2 border rounded-lg text-sm">
+                    <button
+                      onClick={() => {
+                        setSelectedBooking(b);
+                        setShowDetails(true);
+                      }}
+                      className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100"
+                    >
                       View
                     </button>
 
                     {tab === "UPCOMING" && b.canModify && (
                       <>
-                        <button className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+                        <button
+                          onClick={() => handleReschedule(b)}
+                          className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100"
+                        >
                           Reschedule
                         </button>
 
                         <button
                           onClick={() => handleCancel(b.bookingId)}
-                          className="px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm"
+                          className="px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm hover:bg-red-50"
                         >
                           Cancel
                         </button>
@@ -184,6 +216,14 @@ const Profile = () => {
         </div>
 
       </div>
+
+      {/* ONLY DETAILS MODAL NOW */}
+      {showDetails && (
+        <BookingDetailsModal
+          booking={selectedBooking}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
 
     </div>
   );
