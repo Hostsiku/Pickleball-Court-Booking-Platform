@@ -23,7 +23,6 @@ const VenueDetails = () => {
                 setLoading(false);
             });
     }, [id]);
-
     const handleBookNow = () => {
         const user = JSON.parse(localStorage.getItem("user"));
 
@@ -32,12 +31,14 @@ const VenueDetails = () => {
             return;
         }
 
-        // if (user.role !== "BOOKER") {
-        //     alert("Only booker can book slots");
-        //     return;
-        // }
-
         setShowSlots(true);
+
+        // 👇 scroll after render
+        setTimeout(() => {
+            document.getElementById("slots-section")?.scrollIntoView({
+                behavior: "smooth"
+            });
+        }, 100);
     };
 
     if (loading) return <p className="p-6">Loading...</p>;
@@ -125,9 +126,11 @@ const VenueDetails = () => {
                 </div>
 
                 {/* SLOT BOOKING */}
-                <SlotBooking
-                    venueId={venue.id}
-                />
+                {showSlots && (
+                    <div id="slots-section" className="mt-12">
+                        <SlotBooking venueId={venue.id} />
+                    </div>
+                )}
 
             </div>
 

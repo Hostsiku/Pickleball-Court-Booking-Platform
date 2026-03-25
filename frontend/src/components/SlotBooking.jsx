@@ -6,31 +6,52 @@ const SlotBooking = ({ venueId }) => {
   const [data, setData] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
 
-  const today = new Date().toISOString().split("T")[0];
+  const getLocalDate = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-  useEffect(() => {
-    API.get(`/availability/${venueId}?date=${today}`)
-      .then(res => {
-        setData(res.data);
-      })
-      .catch(err => console.log(err));
-  }, [venueId]);
+const today = getLocalDate();
 
-  // 🔹 Get all unique time slots (from first court)
+useEffect(() => {
+  console.log("VENUE ID:", venueId);
+  console.log("DATE SENT:", today);
+
+  API.get(`/availability/${venueId}?date=${today}`)
+    .then(res => {
+      console.log("API SUCCESS:", res.data);
+      setData(res.data);
+    })
+    .catch(err => {
+      console.log("API ERROR:", err.response?.data || err.message);
+    });
+}, [venueId]);
+
+  // Get all unique time slots (from first court)
   const timeSlots = data?.courts?.[0]?.slots || [];
 
-  const handleClick = (courtId, time, status) => {
+const handleClick = (courtId, time, status) => {
 
-    if (status === "BOOKED" || status === "Unavailable") return;
+  const user = JSON.parse(localStorage.getItem("user"));
 
-    const key = `${courtId}-${time}`;
+  if (!user) {
+    alert("Please login to select slots");
+    return;
+  }
 
-    if (selectedSlots.includes(key)) {
-      setSelectedSlots(prev => prev.filter(s => s !== key));
-    } else {
-      setSelectedSlots(prev => [...prev, key]);
-    }
-  };
+  if (status === "BOOKED" || status === "Unavailable") return;
+
+  const key = `${courtId}-${time}`;
+
+  if (selectedSlots.includes(key)) {
+    setSelectedSlots(prev => prev.filter(s => s !== key));
+  } else {
+    setSelectedSlots(prev => [...prev, key]);
+  }
+};
 
   const getColor = (status, isSelected) => {
 

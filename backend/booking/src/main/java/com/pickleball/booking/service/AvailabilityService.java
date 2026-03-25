@@ -98,7 +98,7 @@ public class AvailabilityService {
                                     .isAfter(LocalDateTime.now().minusMinutes(10));
 
                             if (active) {
-                                if (b.getUserId().equals(userId)) {
+                                if (userId != null && b.getUserId().equals(userId)) {
                                     status = "IN_CART";
                                     break;
                                 } else {
