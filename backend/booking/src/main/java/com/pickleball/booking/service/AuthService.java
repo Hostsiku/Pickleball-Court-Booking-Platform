@@ -6,6 +6,9 @@ import com.pickleball.booking.dto.RegisterRequest;
 import com.pickleball.booking.entity.User;
 import com.pickleball.booking.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+
+import java.util.*;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -51,7 +54,8 @@ public class AuthService {
     }
 
     // for login code
-    public String login(AuthRequest request) {
+    public Map<String, Object> login(AuthRequest request) {
+
         if (request.getEmail() == null || request.getPassword() == null) {
             throw new RuntimeException("Email and password required");
         }
@@ -63,6 +67,15 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        return jwtUtil.generateToken(user.getId(), user.getRole());
+        String token = jwtUtil.generateToken(user.getId(), user.getRole());
+
+        // ✅ RETURN FULL USER DATA
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("role", user.getRole());
+
+        return response;
     }
 }

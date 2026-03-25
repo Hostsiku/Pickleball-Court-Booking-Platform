@@ -1,16 +1,37 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import logo from "../assets/logo.jpg";
 import { useAuth } from "../context/AuthContext";
+import API from "../services/api";
 
 const Navbar = () => {
 
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const [cartCount, setCartCount] = useState(0);
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
+
+  // ✅ FETCH CART COUNT
+  const fetchCartCount = async () => {
+    try {
+      const res = await API.get("/booking/cart");
+      setCartCount(res.data.items.length);
+    } catch (err) {
+      console.log("Cart fetch error:", err);
+    }
+  };
+
+  // ✅ LOAD CART COUNT WHEN USER LOGS IN
+  useEffect(() => {
+    if (user) {
+      fetchCartCount();
+    }
+  }, [user]);
 
   return (
     <div className="flex justify-between items-center px-8 py-4 shadow bg-white sticky top-0 z-50">
@@ -48,9 +69,16 @@ const Navbar = () => {
           </Link>
         )}
 
+        {/* 🔥 CART WITH BADGE */}
         {user && (
-          <Link to="/cart" className="hover:text-green-600">
+          <Link to="/cart" className="relative hover:text-green-600 transition">
             Cart
+
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-4 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {cartCount}
+              </span>
+            )}
           </Link>
         )}
 

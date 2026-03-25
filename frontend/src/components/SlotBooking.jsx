@@ -62,7 +62,7 @@ const SlotBooking = ({ venueId }) => {
       }
 
       alert("Added to cart ✅");
-
+      window.location.reload(); 
       setSelectedSlots([]);
 
     } catch (err) {

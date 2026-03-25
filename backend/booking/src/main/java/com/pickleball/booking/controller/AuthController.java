@@ -4,6 +4,8 @@ import com.pickleball.booking.dto.AuthRequest;
 import com.pickleball.booking.dto.RegisterRequest;
 import com.pickleball.booking.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -20,7 +22,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login(@Valid @RequestBody AuthRequest request) {
+    public Map<String, Object> login(@Valid @RequestBody AuthRequest request) {
     return authService.login(request);
 }
 }

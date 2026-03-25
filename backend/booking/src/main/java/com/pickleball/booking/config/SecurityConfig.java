@@ -30,7 +30,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .cors(cors -> {})
+                .cors(cors -> {
+                })
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session -> session
@@ -46,9 +47,12 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/venues/marketplace").permitAll()
                         .requestMatchers("/api/venues/marketplace/**").permitAll()
-                        .requestMatchers("/api/venues/photo/**").permitAll()
+                        .requestMatchers("/api/availability").permitAll()
                         .requestMatchers("/api/availability/**").permitAll()
+                        .requestMatchers("/api/venues/photo").permitAll()
+                        .requestMatchers("/api/venues/photo/**").permitAll()
                         .requestMatchers("/api/venues/search/**").permitAll()
                         .requestMatchers("/api/venues/details/{id}").permitAll()
                         .anyRequest().authenticated())

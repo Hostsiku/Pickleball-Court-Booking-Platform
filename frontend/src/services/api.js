@@ -4,20 +4,25 @@ const API = axios.create({
   baseURL: "http://localhost:8080/api",
 });
 
-// 🔥 SIMPLE & RELIABLE
+// ✅ CORRECT TOKEN ONLY
 API.interceptors.request.use((config) => {
 
-  let token = localStorage.getItem("user");
+  const stored = localStorage.getItem("user");
 
-  if (token) {
-    // remove quotes if stringified
-    token = token.replace(/^"|"$/g, "");
+  if (stored) {
+    try {
+      const user = JSON.parse(stored);
 
-    config.headers.Authorization = `Bearer ${token}`;
+      if (user?.token) {
+        config.headers.Authorization = `Bearer ${user.token}`;
+        console.log("✅ TOKEN SENT:", user.token);
+      } else {
+        console.log("❌ TOKEN NOT FOUND IN OBJECT");
+      }
 
-    console.log("✅ TOKEN ATTACHED:", token);
-  } else {
-    console.log("❌ TOKEN NOT FOUND");
+    } catch (err) {
+      console.log("❌ PARSE ERROR", err);
+    }
   }
 
   return config;
