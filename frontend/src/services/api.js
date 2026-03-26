@@ -4,8 +4,15 @@ const API = axios.create({
   baseURL: "http://localhost:8080/api",
 });
 
-// ✅ CORRECT TOKEN ONLY
 API.interceptors.request.use((config) => {
+
+  const isAuthRoute =
+    config.url.includes("/auth/login") ||
+    config.url.includes("/auth/register");
+
+  if (isAuthRoute) {
+    return config;
+  }
 
   const stored = localStorage.getItem("user");
 
@@ -15,13 +22,11 @@ API.interceptors.request.use((config) => {
 
       if (user?.token) {
         config.headers.Authorization = `Bearer ${user.token}`;
-        console.log("✅ TOKEN SENT:", user.token);
-      } else {
-        console.log("❌ TOKEN NOT FOUND IN OBJECT");
+        console.log("TOKEN SENT:", user.token);
       }
 
     } catch (err) {
-      console.log("❌ PARSE ERROR", err);
+      console.log("PARSE ERROR", err);
     }
   }
 

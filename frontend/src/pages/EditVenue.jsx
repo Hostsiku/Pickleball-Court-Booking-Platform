@@ -48,7 +48,7 @@ const EditVenue = () => {
         await API.post(`/venues/${id}/upload`, fd);
       }
 
-      alert("Updated ✅");
+      alert("Updated");
       navigate("/owner/dashboard");
 
     } catch (err) {
@@ -56,7 +56,7 @@ const EditVenue = () => {
     }
   };
 
-  // 🗑 DELETE VENUE
+  // DELETE VENUE
   const handleDeleteVenue = async () => {
     if (!window.confirm("Are you sure you want to delete this venue? This cannot be undone.")) return;
 

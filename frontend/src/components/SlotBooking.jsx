@@ -8,34 +8,45 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  // ✅ GET TODAY DATE
   const getLocalDate = () => {
     const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return d.toISOString().split("T")[0];
   };
 
-  // ✅ FORMAT TIME (🔥 MAIN FIX)
   const formatTime = (t) => {
     const [h, m] = t.trim().split(":");
-    return `${h.padStart(2, "0")}:${m}`;
+    return `${String(parseInt(h)).padStart(2, "0")}:${m}`;
   };
 
-  // ✅ EXTRACT START & END TIME SAFELY
   const parseSlotTime = (time) => {
     const [startRaw, endRaw] = time.split("-");
-    return {
-      startTime: formatTime(startRaw),
-      endTime: formatTime(endRaw)
-    };
+    let startTime = formatTime(startRaw);
+    let endTime = formatTime(endRaw);
+
+    if (startTime === "24:00") startTime = "00:00";
+    if (endTime === "24:00") endTime = "00:00";
+
+    return { startTime, endTime };
   };
 
-  // ✅ SET DEFAULT DATE
+  const fetchAvailability = async () => {
+    if (!selectedDate) return;
+
+    try {
+      setLoading(true);
+      const res = await API.get(`/availability/${venueId}?date=${selectedDate}`);
+      setData(res.data);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isReschedule && bookingData?.date) {
       setSelectedDate(bookingData.date);
@@ -44,55 +55,43 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     }
   }, [isReschedule, bookingData]);
 
-  // ✅ LOAD AVAILABILITY
   useEffect(() => {
-
-    if (!selectedDate) return;
-
-    API.get(`/availability/${venueId}?date=${selectedDate}`)
-      .then(res => {
-        setData(res.data);
-        setSelectedSlots([]);
-      })
-      .catch(err => console.log(err));
-
+    fetchAvailability();
+    setSelectedSlots([]);
   }, [venueId, selectedDate]);
 
   const timeSlots = data?.courts?.[0]?.slots || [];
 
-  // ✅ HANDLE SLOT CLICK
   const handleClick = (courtId, time, status) => {
-
     if (status === "BOOKED" || status === "Unavailable") return;
 
     const { startTime, endTime } = parseSlotTime(time);
+    const key = `${courtId}-${startTime}`;
 
     const slotObj = {
       venueId,
       courtId,
       date: selectedDate,
       startTime,
-      endTime
+      endTime,
+      key
     };
 
-    const key = `${courtId}-${startTime}`;
     const exists = selectedSlots.find(s => s.key === key);
 
     if (isReschedule) {
-      setSelectedSlots([{ ...slotObj, key }]);
+      setSelectedSlots([slotObj]);
       return;
     }
 
     if (exists) {
       setSelectedSlots(prev => prev.filter(s => s.key !== key));
     } else {
-      setSelectedSlots(prev => [...prev, { ...slotObj, key }]);
+      setSelectedSlots(prev => [...prev, slotObj]);
     }
   };
 
-  // ✅ ADD TO CART
   const handleAddToCart = async () => {
-
     setError("");
 
     const user = JSON.parse(localStorage.getItem("user"));
@@ -108,33 +107,27 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     }
 
     try {
+      setLoading(true);
 
       for (let slot of selectedSlots) {
-        console.log("SENDING:", slot); // debug
-
-        await API.post("/booking/add", {
-          ...slot,
-          startTime: slot.startTime.trim(),
-          endTime: slot.endTime.trim()
-        });
+        await API.post("/booking/add", slot);
       }
 
-      alert("Added to cart ✅");
+      alert("Added to cart");
       setSelectedSlots([]);
+      await fetchAvailability();
 
     } catch (err) {
-
-      console.log("ERROR:", err.response);
-
       setError(
         err.response?.data?.message ||
-        err.response?.data ||
+        JSON.stringify(err.response?.data) ||
         "Failed to add"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ RESCHEDULE
   const handleReschedule = async () => {
 
     if (selectedSlots.length !== 1) {
@@ -145,23 +138,41 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     const slot = selectedSlots[0];
 
     try {
-      await API.put(`/booking/reschedule/${bookingId}`, slot);
+      setLoading(true);
 
-      alert("Rescheduled successfully ✅");
+            console.log("SENDING DATA:", {
+        venueId: slot.venueId,
+        courtId: slot.courtId,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      });
+
+      await API.put(`/booking/reschedule/${bookingId}`, {
+        venueId: slot.venueId,
+        courtId: slot.courtId,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      });
+
+      alert("Rescheduled successfully");
       navigate("/profile");
 
     } catch (err) {
+      console.log("ERROR RESPONSE:", err.response);
+
       alert(
         err.response?.data?.message ||
-        err.response?.data ||
+        JSON.stringify(err.response?.data) ||
         "Error"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ COLORS
   const getColor = (status, isSelected) => {
-
     if (isSelected) return "bg-blue-500";
 
     switch (status) {
@@ -201,13 +212,11 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
 
       {/* TABLE */}
       <div className="overflow-x-auto">
-
         <table className="w-full border-collapse">
 
           <thead>
             <tr className="bg-gray-100">
               <th className="p-3 text-left">Time</th>
-
               {data.courts.map(court => (
                 <th key={court.courtId} className="p-3 text-center">
                   Court {court.courtId}
@@ -218,15 +227,11 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
 
           <tbody>
             {timeSlots.map((slot, rowIndex) => (
-
               <tr key={rowIndex} className="border-t">
 
-                <td className="p-3 font-medium">
-                  {slot.time}
-                </td>
+                <td className="p-3 font-medium">{slot.time}</td>
 
                 {data.courts.map(court => {
-
                   const currentSlot = court.slots[rowIndex];
                   const status = currentSlot.status;
 
@@ -236,66 +241,56 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
 
                   return (
                     <td key={court.courtId} className="p-2 text-center">
-
                       <div
-                        onClick={() =>
-                          handleClick(court.courtId, currentSlot.time, status)
-                        }
+                        onClick={() => handleClick(court.courtId, currentSlot.time, status)}
                         className={`text-white text-sm py-2 rounded-lg cursor-pointer ${getColor(status, isSelected)}`}
                       >
                         {isSelected ? "Selected" : status}
                       </div>
-
                     </td>
                   );
                 })}
-
               </tr>
-
             ))}
           </tbody>
 
         </table>
-
       </div>
 
-      {/* LEGEND */}
-      <div className="flex flex-wrap gap-6 mt-6 text-sm">
-        <span className="text-green-600">● Available</span>
-        <span className="text-blue-600">● Selected</span>
-        <span className="text-yellow-600">● In Cart</span>
-        <span className="text-red-600">● Booked</span>
-        <span className="text-gray-600">● Unavailable</span>
-      </div>
+      {/* 🔥 SELECTED SLOT PREVIEW */}
+      {isReschedule && selectedSlots.length === 1 && (
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-gray-600">Selected Slot:</p>
+          <p className="font-semibold">
+            Court {selectedSlots[0].courtId} • {selectedSlots[0].startTime} - {selectedSlots[0].endTime}
+          </p>
+        </div>
+      )}
 
       {/* BUTTON */}
-      {isReschedule ? (
-
-        <button
-          onClick={handleReschedule}
-          disabled={selectedSlots.length !== 1}
-          className={`mt-6 px-6 py-3 rounded-lg text-white 
-            ${selectedSlots.length !== 1
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"}`}
-        >
-          Confirm Reschedule
-        </button>
-
-      ) : (
-
-        <button
-          onClick={handleAddToCart}
-          disabled={selectedSlots.length === 0}
-          className={`mt-6 px-6 py-3 rounded-lg text-white 
-            ${selectedSlots.length === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700"}`}
-        >
-          Add to Cart
-        </button>
-
-      )}
+      <div className="mt-6">
+        {!isReschedule ? (
+          <button
+            onClick={handleAddToCart}
+            disabled={selectedSlots.length === 0 || loading}
+            className={`w-full py-3 rounded-lg text-white
+              ${loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            {loading ? "Adding..." : "Add to Cart"}
+          </button>
+        ) : (
+          <button
+            onClick={handleReschedule}
+            disabled={selectedSlots.length !== 1 || loading}
+            className={`w-full py-3 rounded-lg text-white
+              ${selectedSlots.length !== 1 || loading
+                ? "bg-gray-400"
+                : "bg-blue-600 hover:bg-blue-700"}`}
+          >
+            {loading ? "Rescheduling..." : "Confirm Reschedule"}
+          </button>
+        )}
+      </div>
 
       {error && <p className="text-red-500 mt-2">{error}</p>}
 

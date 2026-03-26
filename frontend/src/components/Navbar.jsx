@@ -16,7 +16,7 @@ const Navbar = () => {
     navigate("/");
   };
 
-  // 🔥 FETCH CART ONLY FOR BOOKER
+  // FETCH CART ONLY FOR BOOKER
   const fetchCartCount = async () => {
     try {
       const res = await API.get("/booking/cart");
@@ -51,7 +51,7 @@ const Navbar = () => {
           Home
         </Link>
 
-        {/* 🔥 BOOKER NAVBAR */}
+        {/* BOOKER NAVBAR */}
         {user?.role === "BOOKER" && (
           <>
             <Link to="/venues" className="hover:text-green-600 transition">
@@ -73,7 +73,7 @@ const Navbar = () => {
           </>
         )}
 
-        {/* 🔥 OWNER NAVBAR */}
+        {/* OWNER NAVBAR */}
         {user?.role === "OWNER" && (
           <>
             <Link to="/owner/dashboard" className="hover:text-green-600 transition">

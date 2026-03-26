@@ -32,6 +32,7 @@ public class Venue {
     private String phoneNo;
     private String email;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String address;

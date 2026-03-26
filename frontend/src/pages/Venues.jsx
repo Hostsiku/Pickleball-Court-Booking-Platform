@@ -11,7 +11,6 @@ const Venues = () => {
   const [search, setSearch] = useState("");
   const [price, setPrice] = useState("");
 
-  // 🔥 NEW FILTERS
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
 
@@ -20,7 +19,7 @@ const Venues = () => {
 
   const locationParam = searchParams.get("location")?.trim() || "";
 
-  // 🔥 FETCH DATA
+  // FETCH DATA
   useEffect(() => {
 
     setLoading(true);
@@ -41,7 +40,7 @@ const Venues = () => {
 
   }, [locationParam]);
 
-  // 🔥 AVAILABILITY FILTER (API CALL)
+  // AVAILABILITY FILTER 
   const checkAvailability = async () => {
 
     if (!date || !time) {
@@ -65,7 +64,7 @@ const Venues = () => {
     }
   };
 
-  // 🔍 LOCAL FILTER
+  // LOCAL FILTER
   useEffect(() => {
 
     let data = [...venues];
@@ -96,7 +95,7 @@ const Venues = () => {
         </h1>
       </div>
 
-      {/* 🔥 FILTER BAR */}
+      {/* FILTER BAR */}
       <div className="flex flex-wrap gap-4 mb-6 items-center">
 
         {/* SEARCH */}
@@ -120,7 +119,7 @@ const Venues = () => {
           <option value="1000">Below ₹1000</option>
         </select>
 
-        {/* 📅 DATE */}
+        {/* DATE */}
         <input
           type="date"
           value={date}
@@ -128,7 +127,7 @@ const Venues = () => {
           className="border px-3 py-2 rounded-lg"
         />
 
-        {/* ⏰ TIME */}
+        {/* TIME */}
         <input
           type="time"
           value={time}
@@ -136,7 +135,7 @@ const Venues = () => {
           className="border px-3 py-2 rounded-lg"
         />
 
-        {/* 🔍 CHECK BUTTON */}
+        {/* CHECK BUTTON */}
         <button
           onClick={checkAvailability}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
@@ -144,7 +143,7 @@ const Venues = () => {
           Check Availability
         </button>
 
-        {/* 🔄 RESET */}
+        {/* RESET */}
         <button
           onClick={() => {
             setDate("");

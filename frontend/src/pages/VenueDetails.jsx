@@ -9,7 +9,6 @@ const VenueDetails = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // ✅ RESCHEDULE STATE
     const isReschedule = location.state?.isReschedule || false;
     const bookingId = location.state?.bookingId;
     const bookingData = location.state?.bookingData;
@@ -18,7 +17,9 @@ const VenueDetails = () => {
     const [loading, setLoading] = useState(true);
     const [showSlots, setShowSlots] = useState(false);
 
-    // ✅ FETCH VENUE
+    // IMAGE INDEX
+    const [currentImage, setCurrentImage] = useState(0);
+
     useEffect(() => {
         API.get(`/venues/details/${id}`)
             .then(res => {
@@ -31,7 +32,6 @@ const VenueDetails = () => {
             });
     }, [id]);
 
-    // ✅ AUTO OPEN SLOT IF RESCHEDULE
     useEffect(() => {
         if (isReschedule) {
             setShowSlots(true);
@@ -44,7 +44,6 @@ const VenueDetails = () => {
         }
     }, [isReschedule]);
 
-    // ✅ BOOK NOW CLICK
     const handleBookNow = () => {
         setShowSlots(true);
 
@@ -55,20 +54,30 @@ const VenueDetails = () => {
         }, 100);
     };
 
+    // IMAGE NAVIGATION
+    const nextImage = () => {
+        setCurrentImage((prev) =>
+            prev === venue.photos.length - 1 ? 0 : prev + 1
+        );
+    };
+
+    const prevImage = () => {
+        setCurrentImage((prev) =>
+            prev === 0 ? venue.photos.length - 1 : prev - 1
+        );
+    };
+
     if (loading) return <p className="p-6">Loading...</p>;
     if (!venue) return <p className="p-6">Venue not found</p>;
 
     return (
         <div className="min-h-screen">
 
-            {/* FULL WIDTH */}
             <div className="w-full px-10 py-8">
 
                 {/* TITLE */}
                 <div className="mb-8">
-                    <h1 className="text-5xl font-bold tracking-tight">
-                        {venue.name}
-                    </h1>
+                    <h1 className="text-5xl font-bold">{venue.name}</h1>
                     <p className="text-gray-500 mt-2 text-lg">
                         {venue.location}
                     </p>
@@ -77,24 +86,64 @@ const VenueDetails = () => {
                 {/* GRID */}
                 <div className="grid grid-cols-3 gap-10">
 
-                    {/* LEFT */}
+                    {/* LEFT IMAGE SECTION */}
                     <div className="col-span-2">
-                        <div className="rounded-2xl shadow-md">
+
+                        <div className="relative rounded-2xl shadow-md overflow-hidden">
+
+                            {/* MAIN IMAGE */}
                             <img
-                                src={venue.photos?.[0] || "https://via.placeholder.com/800"}
-                                className="w-full h-[500px] object-cover rounded-xl"
+                                src={venue.photos?.[currentImage] || "https://via.placeholder.com/800"}
+                                className="w-full h-[500px] object-cover"
                             />
+
+                            {/* LEFT BUTTON */}
+                            {venue.photos?.length > 1 && (
+                                <button
+                                    onClick={prevImage}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 text-white px-3 py-2 rounded-full"
+                                >
+                                    ◀
+                                </button>
+                            )}
+
+                            {/* RIGHT BUTTON */}
+                            {venue.photos?.length > 1 && (
+                                <button
+                                    onClick={nextImage}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 text-white px-3 py-2 rounded-full"
+                                >
+                                    ▶
+                                </button>
+                            )}
+
                         </div>
+
+                        {/* THUMBNAILS */}
+                        <div className="flex gap-3 mt-4">
+
+                            {venue.photos?.map((photo, index) => (
+                                <img
+                                    key={index}
+                                    src={photo}
+                                    onClick={() => setCurrentImage(index)}
+                                    className={`w-24 h-16 object-cover rounded-lg cursor-pointer border-2 ${currentImage === index
+                                            ? "border-green-600"
+                                            : "border-transparent"
+                                        }`}
+                                />
+                            ))}
+
+                        </div>
+
                     </div>
 
                     {/* RIGHT PANEL */}
                     <div className="bg-white shadow-lg p-6 rounded-2xl h-fit sticky top-6">
 
-                        {/* 🔥 BUTTON TEXT CHANGE */}
                         <button
                             onClick={handleBookNow}
-                            className={`w-full py-3 rounded-xl text-lg font-semibold mb-6 transition text-white
-                                ${isReschedule
+                            className={`w-full py-3 rounded-xl text-lg font-semibold mb-6 text-white ${isReschedule
                                     ? "bg-blue-600 hover:bg-blue-700"
                                     : "bg-green-600 hover:bg-green-700"
                                 }`}
@@ -136,13 +185,13 @@ const VenueDetails = () => {
                         About Venue
                     </h2>
 
-                    <p className="text-gray-600 leading-relaxed text-lg">
+                    <p className="text-gray-600 text-lg whitespace-pre-line">
                         {venue.description || "No description available"}
                     </p>
 
                 </div>
 
-                {/* 🔥 SLOT BOOKING */}
+                {/* SLOT */}
                 {showSlots && (
                     <div id="slots-section" className="mt-12">
                         <SlotBooking

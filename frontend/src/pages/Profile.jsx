@@ -15,13 +15,10 @@ const Profile = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  // ✅ FETCH BOOKINGS
+  // FETCH BOOKINGS
   const fetchBookings = () => {
     API.get("/booking/history")
-      .then(res => {
-        console.log("BOOKINGS:", res.data);
-        setBookings(res.data);
-      })
+      .then(res => setBookings(res.data))
       .catch(err => console.log(err));
   };
 
@@ -31,13 +28,8 @@ const Profile = () => {
 
   const filtered = bookings.filter(b => b.status === tab);
 
-  // ✅ CANCEL
+  // CANCEL
   const handleCancel = async (id) => {
-    if (!id) {
-      alert("Invalid booking");
-      return;
-    }
-
     try {
       await API.delete(`/booking/cancel/${id}`);
       alert("Cancelled successfully");
@@ -47,14 +39,8 @@ const Profile = () => {
     }
   };
 
-  // ✅ NEW RESCHEDULE FLOW (🔥 IMPORTANT CHANGE)
+  // RESCHEDULE
   const handleReschedule = (booking) => {
-
-    if (!booking?.venueId) {
-      alert("Venue not found");
-      return;
-    }
-
     navigate(`/venues/${booking.venueId}`, {
       state: {
         isReschedule: true,
@@ -84,18 +70,29 @@ const Profile = () => {
             </p>
           </div>
 
-          <div className="mt-6">
-            <div className="bg-green-600 text-white px-4 py-3 rounded-lg mb-2">
+          <div className="mt-6 space-y-2">
+
+            {/* BOOKINGS */}
+            <div className="bg-green-600 text-white px-4 py-3 rounded-lg cursor-pointer">
               All Bookings
             </div>
 
-            <div className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">
+            {/* EDIT PROFILE */}
+            <div
+              onClick={() => navigate("/edit-profile")}
+              className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+            >
               Edit Profile
             </div>
 
-            <div className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">
+            {/* FEEDBACK */}
+            <div
+              onClick={() => navigate("/feedback")}
+              className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+            >
               Feedback
             </div>
+
           </div>
 
         </div>
@@ -105,7 +102,6 @@ const Profile = () => {
 
           {/* TABS */}
           <div className="flex gap-4 mb-6">
-
             {["UPCOMING", "PAST", "CANCELLED"].map(t => (
               <button
                 key={t}
@@ -118,7 +114,6 @@ const Profile = () => {
                 {t}
               </button>
             ))}
-
           </div>
 
           {/* BOOKINGS */}
@@ -223,7 +218,7 @@ const Profile = () => {
 
       </div>
 
-      {/* DETAILS MODAL */}
+      {/* MODAL */}
       {showDetails && (
         <BookingDetailsModal
           booking={selectedBooking}

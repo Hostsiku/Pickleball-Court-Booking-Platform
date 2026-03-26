@@ -26,39 +26,44 @@ public class VenueService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    // create venue code
-    public Venue createVenue(Venue venue, Long userId) {
+// create venue code
+public Venue createVenue(Venue venue, Long userId) {
 
-        if (venue.getName() == null || venue.getName().isEmpty()
-                || venue.getAddress() == null || venue.getAddress().isEmpty()
-                || venue.getOpenTime() == null
-                || venue.getCloseTime() == null
-                || venue.getPhoneNo() == null
-                || venue.getEmail() == null
-                || venue.getDescription() == null
-                || venue.getNoOfCourts() <= 0) {
+    if (venue.getName() == null || venue.getName().isEmpty()
+            || venue.getAddress() == null || venue.getAddress().isEmpty()
+            || venue.getOpenTime() == null || venue.getCloseTime() == null
+            || venue.getPhoneNo() == null || venue.getEmail() == null
+            || venue.getDescription() == null || venue.getNoOfCourts() <= 0) {
 
-            throw new RuntimeException("All venue fields are required");
-        }
+        throw new RuntimeException("All venue fields are required");
+    }
 
-        // time validation
-        LocalTime open;
-        LocalTime close;
+    LocalTime open;
+    LocalTime close;
 
-        try {
-            open = LocalTime.parse(venue.getOpenTime());
-            close = LocalTime.parse(venue.getCloseTime());
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid time format (HH:mm required)");
-        }
+    try {
+        open = LocalTime.parse(venue.getOpenTime().trim());
+        close = LocalTime.parse(venue.getCloseTime().trim());
+    } catch (Exception e) {
+        throw new RuntimeException("Invalid time format (HH:mm required)");
+    }
 
-        if (!open.isBefore(close)) {
-            throw new RuntimeException("Open time must be before close time");
-        }
-
+    // CASE 1: 24x7
+    if (open.equals(close)) {
         venue.setOwnerId(userId);
         return venueRepository.save(venue);
     }
+
+    // CASE 2: NORMAL SAME DAY (open < close)
+    if (open.isBefore(close)) {
+        venue.setOwnerId(userId);
+        return venueRepository.save(venue);
+    }
+
+    // CASE 3: OVERNIGHT (open > close) → ALLOW
+    venue.setOwnerId(userId);
+    return venueRepository.save(venue);
+}
 
     // get all venues
     public List<Venue> getAllVenues() {
@@ -70,37 +75,36 @@ public class VenueService {
         return venueRepository.findById(id).orElseThrow(() -> new RuntimeException("Venue not found"));
     }
 
-
     // get venue details by id code
     public Map<String, Object> getVenueDetails(Long id) {
 
-    Venue v = venueRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Venue not found"));
+        Venue v = venueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Venue not found"));
 
-    Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
 
-    result.put("id", v.getId());
-    result.put("name", v.getName());
-    result.put("location", v.getAddress());
-    result.put("description", v.getDescription());
-    result.put("courts", v.getNoOfCourts());
+        result.put("id", v.getId());
+        result.put("name", v.getName());
+        result.put("location", v.getAddress());
+        result.put("description", v.getDescription());
+        result.put("courts", v.getNoOfCourts());
 
-    result.put("openTime", v.getOpenTime());
-    result.put("closeTime", v.getCloseTime());
+        result.put("openTime", v.getOpenTime());
+        result.put("closeTime", v.getCloseTime());
 
-    result.put("weekdayPrice", v.getWeekdayRate());
-    result.put("weekendPrice", v.getWeekendRate());
+        result.put("weekdayPrice", v.getWeekdayRate());
+        result.put("weekendPrice", v.getWeekendRate());
 
-    List<String> images = new ArrayList<>();
+        List<String> images = new ArrayList<>();
 
-    for (VenuePhoto p : v.getPhotos()) {
-        images.add(baseUrl + "/api/venues/photo/" + p.getId());
+        for (VenuePhoto p : v.getPhotos()) {
+            images.add(baseUrl + "/api/venues/photo/" + p.getId());
+        }
+
+        result.put("photos", images);
+
+        return result;
     }
-
-    result.put("photos", images);
-
-    return result;
-}
 
     // update venues
     public Venue updateVenue(Long id, Venue updatedVenue, Long userId) {
@@ -246,41 +250,40 @@ public class VenueService {
         return result;
     }
 
+    // filter by location (EXACT MATCH - CASE INSENSITIVE)
+    public List<Map<String, Object>> filterByLocation(String location) {
 
-   // filter by location (EXACT MATCH - CASE INSENSITIVE)
-public List<Map<String, Object>> filterByLocation(String location) {
+        List<Venue> venues;
 
-    List<Venue> venues;
+        if (location == null || location.trim().isEmpty()) {
+            venues = venueRepository.findAll();
+        } else {
+            venues = venueRepository.findByAddressContainingIgnoreCase(location.trim());
+        }
 
-    if (location == null || location.trim().isEmpty()) {
-        venues = venueRepository.findAll();
-    } else {
-        venues = venueRepository.findByAddressContainingIgnoreCase(location.trim());
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Venue v : venues) {
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", v.getId());
+            item.put("name", v.getName());
+            item.put("location", v.getAddress());
+            item.put("courts", v.getNoOfCourts());
+            item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
+
+            List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
+
+            item.put("photo",
+                    photos.isEmpty()
+                            ? null
+                            : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
+
+            result.add(item);
+        }
+
+        return result;
     }
-
-    List<Map<String, Object>> result = new ArrayList<>();
-
-    for (Venue v : venues) {
-
-        Map<String, Object> item = new HashMap<>();
-        item.put("id", v.getId());
-        item.put("name", v.getName());
-        item.put("location", v.getAddress());
-        item.put("courts", v.getNoOfCourts());
-        item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
-
-        List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
-
-        item.put("photo",
-                photos.isEmpty()
-                        ? null
-                        : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
-
-        result.add(item);
-    }
-
-    return result;
-}
 
     // market place get all venues
     public List<Map<String, Object>> getMarketplaceVenues() {
@@ -358,6 +361,6 @@ public List<Map<String, Object>> filterByLocation(String location) {
 
     // get venues by owner id
     public List<Venue> getVenuesByOwner(Long ownerId) {
-    return venueRepository.findByOwnerId(ownerId);
-}
+        return venueRepository.findByOwnerId(ownerId);
+    }
 }

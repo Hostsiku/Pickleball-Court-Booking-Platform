@@ -34,7 +34,7 @@ const CreateVenue = () => {
     });
   };
 
-  // 📸 IMAGE SELECT
+  // IMAGE SELECT
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
 
@@ -52,7 +52,7 @@ const CreateVenue = () => {
     setPreview(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 🚀 SUBMIT
+  // SUBMIT
   const handleSubmit = async () => {
 
     setError("");
@@ -83,7 +83,7 @@ const CreateVenue = () => {
         await API.post(`/venues/${venueId}/upload`, fd);
       }
 
-      alert("Venue created successfully ✅");
+      alert("Venue created successfully");
       navigate("/owner/dashboard");
 
     } catch (err) {
@@ -137,12 +137,12 @@ const CreateVenue = () => {
 
             <div>
               <label className="text-sm text-gray-600">Open Time</label>
-              <input name="openTime" value={form.openTime} onChange={handleChange} className={inputStyle} />
+              <input type="time" name="openTime" value={form.openTime} onChange={handleChange} className={inputStyle} />
             </div>
 
             <div>
               <label className="text-sm text-gray-600">Close Time</label>
-              <input name="closeTime" value={form.closeTime} onChange={handleChange} className={inputStyle} />
+              <input type="time" name="closeTime" value={form.closeTime} onChange={handleChange} className={inputStyle} />
             </div>
 
           </div>

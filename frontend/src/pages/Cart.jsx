@@ -5,7 +5,9 @@ const Cart = () => {
 
   const [cart, setCart] = useState({ items: [], totalAmount: 0 });
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
+  // 🔥 FETCH CART
   const fetchCart = () => {
     setLoading(true);
 
@@ -15,10 +17,21 @@ const Cart = () => {
       .finally(() => setLoading(false));
   };
 
+  // 🔥 INITIAL LOAD
   useEffect(() => {
     fetchCart();
   }, []);
 
+  // 🔥 AUTO REFRESH (OPTIONAL BUT POWERFUL)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCart();
+    }, 5000); // every 5 sec
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 🔥 REMOVE ITEM
   const handleRemove = async (id) => {
     try {
       await API.delete(`/booking/cart/${id}`);
@@ -28,17 +41,28 @@ const Cart = () => {
     }
   };
 
+  // 🔥 CHECKOUT
   const handleCheckout = async () => {
+
+    if (cart.items.length === 0) return;
+
     try {
+      setCheckoutLoading(true);
+
       await API.post("/booking/checkout");
-      alert("Booking Successful 🎉");
+
+      alert("Booking Successful");
+
       fetchCart();
+
     } catch (err) {
       alert(
         err.response?.data?.message ||
         err.response?.data ||
         "Checkout failed"
       );
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -60,7 +84,7 @@ const Cart = () => {
         {!loading && cart.items.length === 0 && (
           <div className="bg-white p-6 rounded-xl shadow text-center">
             <p className="text-gray-500 mb-4">
-              Your cart is empty 😔
+              Your cart is empty
             </p>
 
             <a
@@ -72,7 +96,7 @@ const Cart = () => {
           </div>
         )}
 
-        {/* CART CARD */}
+        {/* CART */}
         {!loading && cart.items.length > 0 && (
           <div className="bg-white rounded-xl shadow overflow-hidden">
 
@@ -82,9 +106,12 @@ const Cart = () => {
                 Cart ({cart.items.length})
               </h2>
 
-              <span className="text-red-500 text-xl cursor-pointer">
-                🗑
-              </span>
+              <button
+                onClick={fetchCart}
+                className="text-sm text-gray-500 hover:text-black"
+              >
+                Refresh 🔄
+              </button>
             </div>
 
             {/* ITEMS */}
@@ -100,24 +127,20 @@ const Cart = () => {
                   {/* LEFT */}
                   <div>
 
-                    {/* VENUE + COURT */}
                     <p className="font-semibold text-lg">
                       {item.venueName || "Venue"} • {item.courtName || `Court ${item.courtId}`}
                     </p>
 
-                    {/* DATE */}
-                    <p className="text-gray-500 text-sm mt-2 flex items-center gap-2">
-                      📅 {item.date}
+                    <p className="text-gray-500 text-sm mt-2">
+                      {item.date}
                     </p>
 
-                    {/* TIME */}
-                    <p className="text-gray-500 text-sm flex items-center gap-2">
-                      ⏰ {item.time}
+                    <p className="text-gray-500 text-sm">
+                      {item.time}
                     </p>
 
-                    {/* PRICE */}
                     <p className="text-gray-700 mt-3 font-medium">
-                      💰 INR {item.price}
+                      ₹ {item.price}
                     </p>
 
                   </div>
@@ -141,9 +164,17 @@ const Cart = () => {
 
               <button
                 onClick={handleCheckout}
-                className="w-full bg-green-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition"
+                disabled={checkoutLoading}
+                className={`w-full py-3 rounded-lg text-white text-lg font-semibold transition 
+                  ${checkoutLoading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                  }`}
               >
-                Proceed INR {cart.totalAmount.toFixed(2)}
+                {checkoutLoading
+                  ? "Processing..."
+                  : `Proceed ₹ ${cart.totalAmount.toFixed(2)}`
+                }
               </button>
 
             </div>

@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
@@ -24,6 +22,7 @@ const Home = () => {
       .catch(err => console.log(err));
   }, []);
 
+  // filter by location
   const handleSearch = () => {
     if (!location.trim()) return;
     navigate(`/venues?location=${location.trim()}`);
@@ -135,7 +134,7 @@ const Home = () => {
       </div>
 
 
-      {/* 🔥 FEATURED VENUES */}
+      {/*FEATURED VENUES */}
       <div className="px-10 pb-10">
 
         <div className="flex justify-between items-center mb-4">
@@ -155,13 +154,13 @@ const Home = () => {
 
             <div
               key={v.id}
-              onClick={() => navigate(`/venues/${v.id}`)} // ✅ CLICKABLE
+              onClick={() => navigate(`/venues/${v.id}`)}
               className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition overflow-hidden"
             >
 
               <div className="relative">
                 <img
-                  src={v.photo || "https://via.placeholder.com/300"}
+                  src={v.photo}
                   className="w-full h-40 object-cover"
                 />
 
@@ -192,7 +191,7 @@ const Home = () => {
 
       </div>
 
-      {/* 🔥 WHY PICKLEPLAY (PROJECT INFO SECTION) */}
+      {/* WHY PICKLEPLAY */}
       <div className="bg-white py-12 px-10">
 
         <h2 className="text-2xl font-bold text-center mb-10">
@@ -226,7 +225,7 @@ const Home = () => {
 
       </div>
 
-      {/* 🔥 STATS SECTION */}
+      {/* STATS SECTION */}
       <div className="bg-gray-100 py-10 px-10">
 
         <div className="grid grid-cols-4 text-center">

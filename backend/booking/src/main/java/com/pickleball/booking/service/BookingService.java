@@ -94,8 +94,27 @@ public class BookingService {
         LocalTime openTime = LocalTime.parse(venue.getOpenTime().trim());
         LocalTime closeTime = LocalTime.parse(venue.getCloseTime().trim());
 
-        // ✅ FIXED LOGIC (THIS SOLVES YOUR BUG)
-        if (start.isBefore(openTime) || end.isAfter(closeTime)) {
+        // ✅ HANDLE ALL CASES: NORMAL + OVERNIGHT + 24x7
+
+        boolean isValidTime;
+
+        // 24x7 case
+        if (openTime.equals(closeTime)) {
+            isValidTime = true;
+        }
+
+        // Normal case (07:00 → 22:00)
+        else if (openTime.isBefore(closeTime)) {
+            isValidTime = !start.isBefore(openTime) &&
+                    !end.isAfter(closeTime);
+        }
+
+        // Overnight case (07:00 → 01:00)
+        else {
+            isValidTime = (!start.isBefore(openTime) || !end.isAfter(closeTime));
+        }
+
+        if (!isValidTime) {
             throw new RuntimeException("Slot must be within " + openTime + " to " + closeTime);
         }
 
@@ -404,12 +423,31 @@ public class BookingService {
             throw new RuntimeException("Only 1-hour slots allowed");
         }
 
-        // 🕐 Venue working hours
-        int open = Integer.parseInt(venue.getOpenTime().split(":")[0]);
-        int close = Integer.parseInt(venue.getCloseTime().split(":")[0]);
+        // 🕐 Venue working hours (FIXED)
+        LocalTime openTime = LocalTime.parse(venue.getOpenTime());
+        LocalTime closeTime = LocalTime.parse(venue.getCloseTime());
 
-        if (start.getHour() < open || end.getHour() > close) {
-            throw new RuntimeException("Slot outside venue working hours");
+        // CASE 1: Normal timing (07:00 → 22:00)
+        if (closeTime.isAfter(openTime)) {
+
+            if (start.isBefore(openTime) || end.isAfter(closeTime)) {
+                throw new RuntimeException("Slot outside venue working hours");
+            }
+
+        }
+        // CASE 2: Overnight timing (07:00 → 01:00)
+        else {
+
+            boolean valid =
+                    // same day (after opening)
+                    (!start.isBefore(openTime)) ||
+
+                    // after midnight (before closing)
+                            (!end.isAfter(closeTime));
+
+            if (!valid) {
+                throw new RuntimeException("Slot outside venue working hours");
+            }
         }
 
         // ⛔ 12-hour restriction

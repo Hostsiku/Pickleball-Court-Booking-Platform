@@ -14,7 +14,7 @@ const OwnerDashboard = () => {
                 if (Array.isArray(res.data)) {
                     setVenues(res.data);
                 } else if (res.data) {
-                    setVenues([res.data]); // 🔥 convert single → array
+                    setVenues([res.data]);
                 } else {
                     setVenues([]);
                 }
