@@ -1,100 +1,223 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
-import { useNavigate } from "react-router-dom";
 
 const Venues = () => {
 
-    const [venues, setVenues] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
+  const [venues, setVenues] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    // CLEAN LOCATION
-    const rawLocation = searchParams.get("location");
-    const location = rawLocation ? rawLocation.trim() : "";
+  const [search, setSearch] = useState("");
+  const [price, setPrice] = useState("");
 
-    useEffect(() => {
+  // 🔥 NEW FILTERS
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
 
-        setLoading(true);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-        let url = "/venues/marketplace";
+  const locationParam = searchParams.get("location")?.trim() || "";
 
-        if (location) {
-            url = `/venues/search?location=${encodeURIComponent(location)}`;
-        }
+  // 🔥 FETCH DATA
+  useEffect(() => {
 
-        console.log("FINAL API URL:", url);
+    setLoading(true);
 
-        API.get(url)
-            .then(res => {
-                console.log("API RESPONSE:", res.data);
-                setVenues(res.data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.log(err);
-                setLoading(false);
-            });
+    let url = "/venues/marketplace";
 
-    }, [location]);
+    if (locationParam) {
+      url = `/venues/search?location=${encodeURIComponent(locationParam)}`;
+    }
 
-    return (
-        <div className="p-6">
+    API.get(url)
+      .then(res => {
+        setVenues(res.data);
+        setFiltered(res.data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
 
-            <h1 className="text-2xl font-bold mb-6">
-                {location
-                    ? `Available Venues in ${location}`
-                    : "All Available Venues"}
-            </h1>
+  }, [locationParam]);
 
-            {loading && (
-                <p className="text-gray-500 text-center">Loading venues...</p>
-            )}
+  // 🔥 AVAILABILITY FILTER (API CALL)
+  const checkAvailability = async () => {
 
-            {!loading && venues.length === 0 && (
-                <p className="text-gray-500 text-center">
-                    No venues found {location && `in "${location}"`}
-                </p>
-            )}
+    if (!date || !time) {
+      alert("Select date & time");
+      return;
+    }
 
-            {!loading && venues.length > 0 && (
-                <div className="grid grid-cols-3 gap-6">
+    setLoading(true);
 
-                    {venues.map(v => (
-                        <div
-                            key={v.id}
-                            onClick={() => navigate(`/venues/${v.id}`)}
-                            className="shadow rounded-lg p-3 cursor-pointer hover:shadow-xl transition"
-                        >
+    try {
+      const res = await API.get(
+        `/venues/available?date=${date}&time=${time}`
+      );
 
-                            <img
-                                src={v.photo || "https://via.placeholder.com/300"}
-                                className="w-full h-40 object-cover rounded"
-                            />
+      setFiltered(res.data);
 
-                            <h3 className="font-bold mt-2">{v.name}</h3>
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                            <p className="text-sm text-gray-500">
-                                {v.location}
-                            </p>
+  // 🔍 LOCAL FILTER
+  useEffect(() => {
 
-                            <p className="text-sm">
-                                Courts: {v.courts}
-                            </p>
+    let data = [...venues];
 
-                            <p className="text-green-600 font-bold">
-                                ₹{v.startingPrice}
-                            </p>
+    if (search) {
+      data = data.filter(v =>
+        v.name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
 
-                        </div>
-                    ))}
+    if (price) {
+      data = data.filter(v => v.startingPrice <= Number(price));
+    }
 
-                </div>
-            )}
+    setFiltered(data);
 
-        </div>
-    );
+  }, [search, price, venues]);
+
+  return (
+    <div className="p-6 bg-gray-100 min-h-screen">
+
+      {/* HEADER */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">
+          {locationParam
+            ? `Sports Venues in ${locationParam}`
+            : "All Sports Venues"}
+        </h1>
+      </div>
+
+      {/* 🔥 FILTER BAR */}
+      <div className="flex flex-wrap gap-4 mb-6 items-center">
+
+        {/* SEARCH */}
+        <input
+          type="text"
+          placeholder="Search venue..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-[200px] border px-4 py-2 rounded-lg"
+        />
+
+        {/* PRICE */}
+        <select
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="border px-4 py-2 rounded-lg"
+        >
+          <option value="">All Prices</option>
+          <option value="300">Below ₹300</option>
+          <option value="500">Below ₹500</option>
+          <option value="1000">Below ₹1000</option>
+        </select>
+
+        {/* 📅 DATE */}
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        />
+
+        {/* ⏰ TIME */}
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        />
+
+        {/* 🔍 CHECK BUTTON */}
+        <button
+          onClick={checkAvailability}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+        >
+          Check Availability
+        </button>
+
+        {/* 🔄 RESET */}
+        <button
+          onClick={() => {
+            setDate("");
+            setTime("");
+            setFiltered(venues);
+          }}
+          className="bg-gray-300 px-4 py-2 rounded-lg"
+        >
+          Reset
+        </button>
+
+      </div>
+
+      {/* LOADING */}
+      {loading && (
+        <p className="text-center text-gray-500">Loading venues...</p>
+      )}
+
+      {/* EMPTY */}
+      {!loading && filtered.length === 0 && (
+        <p className="text-center text-gray-500">
+          No venues found
+        </p>
+      )}
+
+      {/* CARDS */}
+      <div className="grid grid-cols-3 gap-6">
+
+        {filtered.map(v => (
+
+          <div
+            key={v.id}
+            onClick={() => navigate(`/venues/${v.id}`)}
+            className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition overflow-hidden"
+          >
+
+            <div className="relative">
+
+              <img
+                src={v.photo || "https://via.placeholder.com/400"}
+                className="w-full h-48 object-cover"
+              />
+
+              <span className="absolute bottom-2 right-2 bg-green-600 text-white text-xs px-3 py-1 rounded">
+                Bookable
+              </span>
+
+            </div>
+
+            <div className="p-4">
+
+              <h3 className="font-semibold text-lg">{v.name}</h3>
+
+              <p className="text-sm text-gray-500">{v.location}</p>
+
+              <p className="text-sm mt-1">
+                Courts: {v.courts}
+              </p>
+
+              <p className="text-green-600 font-bold mt-2">
+                ₹{v.startingPrice}
+              </p>
+
+            </div>
+
+          </div>
+
+        ))}
+
+      </div>
+
+    </div>
+  );
 };
 
 export default Venues;

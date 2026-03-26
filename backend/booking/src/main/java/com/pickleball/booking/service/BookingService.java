@@ -39,7 +39,7 @@ public class BookingService {
 
         clearExpiredCart();
 
-        // all feilds are required
+        // ✅ VALIDATION: required fields
         if (request.getVenueId() == null ||
                 request.getCourtId() == 0 ||
                 request.getDate() == null ||
@@ -49,16 +49,20 @@ public class BookingService {
             throw new RuntimeException("All fields are required");
         }
 
-        // venue validation
+        // ✅ TRIM INPUT (VERY IMPORTANT)
+        String startTimeStr = request.getStartTime().trim();
+        String endTimeStr = request.getEndTime().trim();
+
+        // ✅ VENUE VALIDATION
         Venue venue = venueRepository.findById(request.getVenueId())
                 .orElseThrow(() -> new RuntimeException("Venue not found"));
 
-        // court validation
+        // ✅ COURT VALIDATION
         if (request.getCourtId() < 1 || request.getCourtId() > venue.getNoOfCourts()) {
             throw new RuntimeException("Invalid courtId. Venue has only " + venue.getNoOfCourts() + " courts");
         }
 
-        // date validation
+        // ✅ DATE VALIDATION
         LocalDate parsedDate;
         try {
             parsedDate = LocalDate.parse(request.getDate());
@@ -70,39 +74,41 @@ public class BookingService {
             throw new RuntimeException("Past date not allowed");
         }
 
-        // time validation
+        // ✅ TIME PARSING
         LocalTime start;
         LocalTime end;
 
         try {
-            start = LocalTime.parse(request.getStartTime());
-            end = LocalTime.parse(request.getEndTime());
+            start = LocalTime.parse(startTimeStr);
+            end = LocalTime.parse(endTimeStr);
         } catch (Exception e) {
             throw new RuntimeException("Invalid time format (HH:mm required)");
         }
 
-        // only one hr slot
+        // ✅ VALIDATE 1-HOUR SLOT
         if (!end.equals(start.plusHours(1))) {
             throw new RuntimeException("Only 1-hour slot booking allowed");
         }
 
-        // check within time
-        int open = Integer.parseInt(venue.getOpenTime().split(":")[0]);
-        int close = Integer.parseInt(venue.getCloseTime().split(":")[0]);
+        // ✅ PARSE VENUE TIMES PROPERLY
+        LocalTime openTime = LocalTime.parse(venue.getOpenTime().trim());
+        LocalTime closeTime = LocalTime.parse(venue.getCloseTime().trim());
 
-        if (start.getHour() < open || end.getHour() > close) {
-            throw new RuntimeException("Slot outside venue working hours");
+        // ✅ FIXED LOGIC (THIS SOLVES YOUR BUG)
+        if (start.isBefore(openTime) || end.isAfter(closeTime)) {
+            throw new RuntimeException("Slot must be within " + openTime + " to " + closeTime);
         }
 
-        // check duplication and conflict
+        // ✅ CHECK DUPLICATE / CONFLICT
         Optional<Booking> existing = bookingRepository
                 .findByVenueIdAndCourtIdAndBookingDateAndStartTime(
                         request.getVenueId(),
                         request.getCourtId(),
                         request.getDate(),
-                        request.getStartTime());
+                        startTimeStr);
 
         if (existing.isPresent()) {
+
             Booking b = existing.get();
 
             boolean activeCart = "IN_CART".equals(b.getStatus()) &&
@@ -113,13 +119,13 @@ public class BookingService {
             }
         }
 
-        // save booking
+        // ✅ SAVE BOOKING
         Booking booking = new Booking();
         booking.setVenueId(request.getVenueId());
         booking.setCourtId(request.getCourtId());
         booking.setBookingDate(request.getDate());
-        booking.setStartTime(request.getStartTime());
-        booking.setEndTime(request.getEndTime());
+        booking.setStartTime(startTimeStr);
+        booking.setEndTime(endTimeStr);
         booking.setUserId(userId);
         booking.setStatus("IN_CART");
         booking.setCreatedAt(LocalDateTime.now());
@@ -155,17 +161,31 @@ public class BookingService {
 
             Venue venue = venueRepository.findById(b.getVenueId()).orElseThrow();
 
+            // 🧠 DATE LOGIC
             LocalDate date = LocalDate.parse(b.getBookingDate());
-            boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+            boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY ||
+                    date.getDayOfWeek() == DayOfWeek.SUNDAY;
 
             double price = isWeekend ? venue.getWeekendRate() : venue.getWeekdayRate();
 
             total += price;
 
+            // 🔥 FORMAT DATE (Optional but nice UX)
+            String formattedDate = date.toString(); // or use DateTimeFormatter
+
+            // 🔥 COURT NAME (if you don’t have table, fallback)
+            String courtName = "Court " + b.getCourtId();
+
             Map<String, Object> item = new HashMap<>();
+
             item.put("bookingId", b.getId());
+
+            // ✅ NEW FIELDS (IMPORTANT)
+            item.put("venueName", venue.getName());
+            item.put("courtName", courtName);
+
             item.put("courtId", b.getCourtId());
-            item.put("date", b.getBookingDate());
+            item.put("date", formattedDate);
             item.put("time", b.getStartTime() + " - " + b.getEndTime());
             item.put("price", price);
 

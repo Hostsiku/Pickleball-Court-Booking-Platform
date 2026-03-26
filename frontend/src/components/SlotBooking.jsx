@@ -20,16 +20,31 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     return `${year}-${month}-${day}`;
   };
 
+  // ✅ FORMAT TIME (🔥 MAIN FIX)
+  const formatTime = (t) => {
+    const [h, m] = t.trim().split(":");
+    return `${h.padStart(2, "0")}:${m}`;
+  };
+
+  // ✅ EXTRACT START & END TIME SAFELY
+  const parseSlotTime = (time) => {
+    const [startRaw, endRaw] = time.split("-");
+    return {
+      startTime: formatTime(startRaw),
+      endTime: formatTime(endRaw)
+    };
+  };
+
   // ✅ SET DEFAULT DATE
   useEffect(() => {
     if (isReschedule && bookingData?.date) {
-      setSelectedDate(bookingData.date); // 🔥 existing booking date
+      setSelectedDate(bookingData.date);
     } else {
       setSelectedDate(getLocalDate());
     }
   }, [isReschedule, bookingData]);
 
-  // ✅ LOAD AVAILABILITY BASED ON DATE
+  // ✅ LOAD AVAILABILITY
   useEffect(() => {
 
     if (!selectedDate) return;
@@ -37,7 +52,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     API.get(`/availability/${venueId}?date=${selectedDate}`)
       .then(res => {
         setData(res.data);
-        setSelectedSlots([]); // reset selection on date change
+        setSelectedSlots([]);
       })
       .catch(err => console.log(err));
 
@@ -50,7 +65,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
 
     if (status === "BOOKED" || status === "Unavailable") return;
 
-    const [startTime, endTime] = time.split(" - ");
+    const { startTime, endTime } = parseSlotTime(time);
 
     const slotObj = {
       venueId,
@@ -63,7 +78,6 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     const key = `${courtId}-${startTime}`;
     const exists = selectedSlots.find(s => s.key === key);
 
-    // 🔥 RESCHEDULE MODE → ONLY ONE SLOT
     if (isReschedule) {
       setSelectedSlots([{ ...slotObj, key }]);
       return;
@@ -96,15 +110,27 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
     try {
 
       for (let slot of selectedSlots) {
-        await API.post("/booking/add", slot);
+        console.log("SENDING:", slot); // debug
+
+        await API.post("/booking/add", {
+          ...slot,
+          startTime: slot.startTime.trim(),
+          endTime: slot.endTime.trim()
+        });
       }
 
       alert("Added to cart ✅");
       setSelectedSlots([]);
 
     } catch (err) {
-      console.log(err);
-      setError(err.response?.data || "Failed to add");
+
+      console.log("ERROR:", err.response);
+
+      setError(
+        err.response?.data?.message ||
+        err.response?.data ||
+        "Failed to add"
+      );
     }
   };
 
@@ -125,7 +151,11 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
       navigate("/profile");
 
     } catch (err) {
-      alert(err.response?.data || "Error");
+      alert(
+        err.response?.data?.message ||
+        err.response?.data ||
+        "Error"
+      );
     }
   };
 
@@ -157,7 +187,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
         {isReschedule ? "Select New Slot" : "Select Time Slot"}
       </h2>
 
-      {/* 🔥 DATE PICKER */}
+      {/* DATE */}
       <div className="mb-6 flex items-center gap-4">
         <label className="font-medium">Select Date:</label>
         <input
@@ -169,6 +199,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
         />
       </div>
 
+      {/* TABLE */}
       <div className="overflow-x-auto">
 
         <table className="w-full border-collapse">
@@ -199,7 +230,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
                   const currentSlot = court.slots[rowIndex];
                   const status = currentSlot.status;
 
-                  const startTime = currentSlot.time.split(" - ")[0];
+                  const { startTime } = parseSlotTime(currentSlot.time);
                   const key = `${court.courtId}-${startTime}`;
                   const isSelected = selectedSlots.some(s => s.key === key);
 

@@ -16,7 +16,7 @@ const Navbar = () => {
     navigate("/");
   };
 
-  // ✅ FETCH CART COUNT
+  // 🔥 FETCH CART ONLY FOR BOOKER
   const fetchCartCount = async () => {
     try {
       const res = await API.get("/booking/cart");
@@ -26,9 +26,8 @@ const Navbar = () => {
     }
   };
 
-  // ✅ LOAD CART COUNT WHEN USER LOGS IN
   useEffect(() => {
-    if (user) {
+    if (user?.role === "BOOKER") {
       fetchCartCount();
     }
   }, [user]);
@@ -38,11 +37,7 @@ const Navbar = () => {
 
       {/* LOGO */}
       <Link to="/" className="flex items-center gap-2">
-        <img
-          src={logo}
-          alt="logo"
-          className="w-9 h-9 object-cover rounded-full"
-        />
+        <img src={logo} alt="logo" className="w-9 h-9 object-cover rounded-full" />
         <h1 className="text-2xl font-bold text-green-600 tracking-wide">
           PicklePlay
         </h1>
@@ -51,35 +46,53 @@ const Navbar = () => {
       {/* MENU */}
       <div className="flex gap-8 items-center text-sm font-medium">
 
+        {/* COMMON */}
         <Link to="/" className="hover:text-green-600 transition">
           Home
         </Link>
 
-        <Link to="/venues" className="hover:text-green-600 transition">
-          Book
-        </Link>
+        {/* 🔥 BOOKER NAVBAR */}
+        {user?.role === "BOOKER" && (
+          <>
+            <Link to="/venues" className="hover:text-green-600 transition">
+              Book
+            </Link>
 
-        <span className="text-gray-400 cursor-not-allowed">
-          Train
-        </span>
+            <Link to="/profile" className="hover:text-green-600 transition">
+              Profile
+            </Link>
 
-        {user && (
-          <Link to="/profile" className="hover:text-green-600 transition">
-            Profile
-          </Link>
+            <Link to="/cart" className="relative hover:text-green-600 transition">
+              Cart
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-4 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          </>
         )}
 
-        {/* 🔥 CART WITH BADGE */}
-        {user && (
-          <Link to="/cart" className="relative hover:text-green-600 transition">
-            Cart
+        {/* 🔥 OWNER NAVBAR */}
+        {user?.role === "OWNER" && (
+          <>
+            <Link to="/owner/dashboard" className="hover:text-green-600 transition">
+              Dashboard
+            </Link>
 
-            {cartCount > 0 && (
-              <span className="absolute -top-2 -right-4 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {cartCount}
-              </span>
-            )}
-          </Link>
+            <Link to="/owner/create-venue" className="hover:text-green-600 transition">
+              Add Venue
+            </Link>
+          </>
+        )}
+
+        {/* GUEST */}
+        {!user && (
+          <>
+            <Link to="/venues" className="hover:text-green-600 transition">
+              Book
+            </Link>
+          </>
         )}
 
       </div>
@@ -96,12 +109,10 @@ const Navbar = () => {
           </Link>
         ) : (
           <>
-            {/* USER NAME */}
             <span className="font-semibold text-gray-700">
               {user.name}
             </span>
 
-            {/* LOGOUT */}
             <button
               onClick={handleLogout}
               className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition"

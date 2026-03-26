@@ -1,3 +1,5 @@
+
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
@@ -24,15 +26,14 @@ const Home = () => {
 
   const handleSearch = () => {
     if (!location.trim()) return;
-
     navigate(`/venues?location=${location.trim()}`);
   };
 
   return (
-    <div>
+    <div className="bg-gray-50">
 
-      {/* HERO SECTION */}
-      <div className="bg-gray-100 px-10 py-16 flex justify-between items-center">
+      {/* HERO */}
+      <div className="px-10 py-16 flex justify-between items-center">
 
         {/* LEFT CONTENT */}
         <div className="max-w-xl">
@@ -133,36 +134,122 @@ const Home = () => {
 
       </div>
 
-      {/* FEATURED VENUES */}
-      <div className="p-6">
 
-        <div className="flex justify-between mb-4">
+      {/* 🔥 FEATURED VENUES */}
+      <div className="px-10 pb-10">
+
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Featured Venues</h2>
 
-          <a href="/venues" className="text-green-600">
+          <button
+            onClick={() => navigate("/venues")}
+            className="text-green-600"
+          >
             See all →
-          </a>
+          </button>
         </div>
 
         <div className="grid grid-cols-4 gap-6">
 
           {venues.slice(0, 4).map(v => (
-            <div key={v.id} className="shadow rounded-lg p-3 hover:shadow-xl transition">
 
-              <img
-                src={v.photo || "https://via.placeholder.com/300"}
-                className="w-full h-32 object-cover rounded"
-              />
+            <div
+              key={v.id}
+              onClick={() => navigate(`/venues/${v.id}`)} // ✅ CLICKABLE
+              className="bg-white rounded-xl shadow hover:shadow-xl cursor-pointer transition overflow-hidden"
+            >
 
-              <h3 className="font-bold mt-2">{v.name}</h3>
-              <p className="text-sm text-gray-500">{v.location}</p>
+              <div className="relative">
+                <img
+                  src={v.photo || "https://via.placeholder.com/300"}
+                  className="w-full h-40 object-cover"
+                />
 
-              <p className="text-green-600 font-bold">
-                ₹{v.startingPrice}
-              </p>
+                <span className="absolute bottom-2 right-2 bg-green-600 text-white text-xs px-3 py-1 rounded">
+                  Bookable
+                </span>
+              </div>
+
+              <div className="p-3">
+
+                <h3 className="font-semibold">{v.name}</h3>
+
+                <p className="text-sm text-gray-500">
+                  {v.location}
+                </p>
+
+                <p className="text-green-600 font-bold mt-1">
+                  ₹{v.startingPrice}
+                </p>
+
+              </div>
 
             </div>
+
           ))}
+
+        </div>
+
+      </div>
+
+      {/* 🔥 WHY PICKLEPLAY (PROJECT INFO SECTION) */}
+      <div className="bg-white py-12 px-10">
+
+        <h2 className="text-2xl font-bold text-center mb-10">
+          Why PicklePlay?
+        </h2>
+
+        <div className="grid grid-cols-3 gap-8 text-center">
+
+          <div>
+            <h3 className="font-semibold text-lg mb-2">⚡ Instant Booking</h3>
+            <p className="text-gray-500">
+              Book courts in seconds with real-time availability.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-lg mb-2">📍 Nearby Venues</h3>
+            <p className="text-gray-500">
+              Discover sports venues around your location easily.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-lg mb-2">💰 Transparent Pricing</h3>
+            <p className="text-gray-500">
+              No hidden charges. Clear and upfront pricing.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* 🔥 STATS SECTION */}
+      <div className="bg-gray-100 py-10 px-10">
+
+        <div className="grid grid-cols-4 text-center">
+
+          <div>
+            <h3 className="text-2xl font-bold">100+</h3>
+            <p className="text-gray-500">Venues</p>
+          </div>
+
+          <div>
+            <h3 className="text-2xl font-bold">5000+</h3>
+            <p className="text-gray-500">Bookings</p>
+          </div>
+
+          <div>
+            <h3 className="text-2xl font-bold">1000+</h3>
+            <p className="text-gray-500">Users</p>
+          </div>
+
+          <div>
+            <h3 className="text-2xl font-bold">24/7</h3>
+            <p className="text-gray-500">Support</p>
+          </div>
 
         </div>
 
