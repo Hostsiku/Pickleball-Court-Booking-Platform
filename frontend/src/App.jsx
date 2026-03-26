@@ -11,6 +11,7 @@ import Cart from "./pages/Cart";
 import Reschedule from "./components/RescheduleModal";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import CreateVenue from "./pages/CreateVenue";
+import EditVenue from "./pages/EditVenue";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
 
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
         <Route path="/owner/create-venue" element={<CreateVenue />} />
+        <Route path="/owner/venue/:id" element={<EditVenue />} />
       </Routes>
     </>
   );
