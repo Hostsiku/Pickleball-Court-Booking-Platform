@@ -16,7 +16,7 @@ const Navbar = () => {
     navigate("/");
   };
 
-  // FETCH CART ONLY FOR BOOKER
+  // FETCH CART 
   const fetchCartCount = async () => {
     try {
       const res = await API.get("/booking/cart");
@@ -83,6 +83,11 @@ const Navbar = () => {
             <Link to="/owner/create-venue" className="hover:text-green-600 transition">
               Add Venue
             </Link>
+
+            <Link to="/owner/profile" className="hover:text-green-600 transition">
+              Profile
+            </Link>
+
           </>
         )}
 

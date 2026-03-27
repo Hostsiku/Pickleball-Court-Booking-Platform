@@ -2,7 +2,6 @@ package com.pickleball.booking.controller;
 
 import com.pickleball.booking.service.FeedbackService;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
@@ -24,7 +23,6 @@ public class FeedbackController {
                 .getPrincipal();
     }
 
-    @PreAuthorize("hasRole('BOOKER')")
     @PostMapping
     public String submitFeedback(@RequestBody Map<String, String> body) {
         return feedbackService.submitFeedback(getUserId(), body.get("message"));

@@ -39,8 +39,8 @@ const Register = () => {
     return null;
   };
 
-  const handleRegister = async () => {
-
+  const handleRegister = async (e) => {
+    e.preventDefault()
     const validationError = validate();
 
     if (validationError) {
@@ -86,7 +86,7 @@ const Register = () => {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
 
-      <div className="bg-white p-8 rounded-xl shadow w-[350px]">
+      <form onSubmit={handleRegister} className="bg-white p-8 rounded-xl shadow w-[350px]">
 
         <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
 
@@ -134,8 +134,6 @@ const Register = () => {
         )}
 
         <button
-          onClick={handleRegister}
-          onKeyDown={(e) => e.key === "Enter" && handleRegister()}
           disabled={loading}
           className={`w-full py-2 rounded text-white ${
             loading
@@ -153,7 +151,7 @@ const Register = () => {
           </Link>
         </p>
 
-      </div>
+      </form>
 
     </div>
   );

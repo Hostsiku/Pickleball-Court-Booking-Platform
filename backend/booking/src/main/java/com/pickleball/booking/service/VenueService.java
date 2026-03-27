@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
@@ -26,44 +27,44 @@ public class VenueService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-// create venue code
-public Venue createVenue(Venue venue, Long userId) {
+    // create venue code
+    public Venue createVenue(Venue venue, Long userId) {
 
-    if (venue.getName() == null || venue.getName().isEmpty()
-            || venue.getAddress() == null || venue.getAddress().isEmpty()
-            || venue.getOpenTime() == null || venue.getCloseTime() == null
-            || venue.getPhoneNo() == null || venue.getEmail() == null
-            || venue.getDescription() == null || venue.getNoOfCourts() <= 0) {
+        if (venue.getName() == null || venue.getName().isEmpty()
+                || venue.getAddress() == null || venue.getAddress().isEmpty()
+                || venue.getOpenTime() == null || venue.getCloseTime() == null
+                || venue.getPhoneNo() == null || venue.getEmail() == null
+                || venue.getDescription() == null || venue.getNoOfCourts() <= 0) {
 
-        throw new RuntimeException("All venue fields are required");
-    }
+            throw new RuntimeException("All venue fields are required");
+        }
 
-    LocalTime open;
-    LocalTime close;
+        LocalTime open;
+        LocalTime close;
 
-    try {
-        open = LocalTime.parse(venue.getOpenTime().trim());
-        close = LocalTime.parse(venue.getCloseTime().trim());
-    } catch (Exception e) {
-        throw new RuntimeException("Invalid time format (HH:mm required)");
-    }
+        try {
+            open = LocalTime.parse(venue.getOpenTime().trim());
+            close = LocalTime.parse(venue.getCloseTime().trim());
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid time format (HH:mm required)");
+        }
 
-    // CASE 1: 24x7
-    if (open.equals(close)) {
+        // 24x7
+        if (open.equals(close)) {
+            venue.setOwnerId(userId);
+            return venueRepository.save(venue);
+        }
+
+        // NORMAL SAME DAY 
+        if (open.isBefore(close)) {
+            venue.setOwnerId(userId);
+            return venueRepository.save(venue);
+        }
+
+        //  OVERNIGHT 
         venue.setOwnerId(userId);
         return venueRepository.save(venue);
     }
-
-    // CASE 2: NORMAL SAME DAY (open < close)
-    if (open.isBefore(close)) {
-        venue.setOwnerId(userId);
-        return venueRepository.save(venue);
-    }
-
-    // CASE 3: OVERNIGHT (open > close) → ALLOW
-    venue.setOwnerId(userId);
-    return venueRepository.save(venue);
-}
 
     // get all venues
     public List<Venue> getAllVenues() {
@@ -160,10 +161,17 @@ public Venue createVenue(Venue venue, Long userId) {
         venueRepository.delete(venue);
     }
 
-    // filter bt time and date for booker
+    // FILTER VENUES BY DATE + TIME
     public List<Map<String, Object>> filterVenues(String date, String time) {
 
-        // validate date format
+        if (date == null || date.isBlank()) {
+            throw new RuntimeException("Date is required");
+        }
+
+        if (time == null || time.isBlank()) {
+            throw new RuntimeException("Time is required");
+        }
+
         LocalDate parsedDate;
         try {
             parsedDate = LocalDate.parse(date);
@@ -171,12 +179,6 @@ public Venue createVenue(Venue venue, Long userId) {
             throw new RuntimeException("Invalid date format (yyyy-MM-dd required)");
         }
 
-        // validate past time
-        if (parsedDate.isBefore(LocalDate.now())) {
-            throw new RuntimeException("Past date not allowed");
-        }
-
-        // validate time format
         LocalTime parsedTime;
         try {
             parsedTime = LocalTime.parse(time);
@@ -184,9 +186,15 @@ public Venue createVenue(Venue venue, Long userId) {
             throw new RuntimeException("Invalid time format (HH:mm required)");
         }
 
-        // prevent past time selection for today
-        if (parsedDate.equals(LocalDate.now()) &&
-                parsedTime.getHour() <= LocalTime.now().getHour()) {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        if (parsedDate.isBefore(today)) {
+            throw new RuntimeException("Past date not allowed");
+        }
+
+        // TIME VALIDATION
+        if (parsedDate.equals(today) && !parsedTime.isAfter(now)) {
             throw new RuntimeException("Cannot select past time for today");
         }
 
@@ -198,13 +206,28 @@ public Venue createVenue(Venue venue, Long userId) {
             int open = Integer.parseInt(v.getOpenTime().split(":")[0]);
             int close = Integer.parseInt(v.getCloseTime().split(":")[0]);
 
-            if (parsedTime.getHour() < open || parsedTime.getHour() >= close) {
-                continue;
+            int selectedHour = parsedTime.getHour();
+
+            // HANDLE 24x7 + OVERNIGHT VENUES
+            boolean withinHours;
+
+            if (open == close) {
+                // 24x7
+                withinHours = true;
+            } else if (open < close) {
+                // normal
+                withinHours = selectedHour >= open && selectedHour < close;
+            } else {
+                // overnight
+                withinHours = selectedHour >= open || selectedHour < close;
             }
+
+            if (!withinHours)
+                continue;
 
             List<Booking> bookings = bookingRepository.findByVenueIdAndBookingDate(v.getId(), date);
 
-            boolean available = false;
+            boolean venueAvailable = false;
 
             for (int court = 1; court <= v.getNoOfCourts(); court++) {
 
@@ -212,36 +235,60 @@ public Venue createVenue(Venue venue, Long userId) {
 
                 for (Booking b : bookings) {
 
-                    boolean isActiveCart = "IN_CART".equals(b.getStatus()) &&
-                            b.getCreatedAt().isAfter(
-                                    java.time.LocalDateTime.now().minusMinutes(10));
+                    int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
+                    int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
 
-                    if (b.getCourtId() == court &&
-                            b.getStartTime().equals(time) &&
-                            ("BOOKED".equals(b.getStatus()) || isActiveCart)) {
+                    boolean overlap;
 
-                        booked = true;
-                        break;
+                    if (bookedStart < bookedEnd) {
+                        overlap = selectedHour < bookedEnd && (selectedHour + 1) > bookedStart;
+                    } else {
+                        // overnight booking
+                        overlap = (selectedHour >= bookedStart || (selectedHour + 1) <= bookedEnd);
+                    }
+
+                    if (overlap) {
+
+                        if ("IN_CART".equals(b.getStatus())) {
+
+                            boolean active = b.getCreatedAt()
+                                    .isAfter(LocalDateTime.now().minusMinutes(10));
+
+                            if (active) {
+                                booked = true;
+                                break;
+                            }
+
+                        } else if ("BOOKED".equals(b.getStatus())) {
+                            booked = true;
+                            break;
+                        }
                     }
                 }
 
                 if (!booked) {
-                    available = true;
+                    venueAvailable = true;
                     break;
                 }
             }
 
-            if (available) {
+            if (venueAvailable) {
 
                 Map<String, Object> item = new HashMap<>();
+
                 item.put("id", v.getId());
                 item.put("name", v.getName());
                 item.put("location", v.getAddress());
                 item.put("courts", v.getNoOfCourts());
-                item.put("startingPrice", Math.min(v.getWeekdayRate(), v.getWeekendRate()));
+                item.put("startingPrice",
+                        Math.min(v.getWeekdayRate(), v.getWeekendRate()));
 
                 List<VenuePhoto> photos = venuePhotoRepository.findByVenue_Id(v.getId());
-                item.put("photo", photos.isEmpty() ? null : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
+
+                item.put("photo",
+                        photos.isEmpty()
+                                ? null
+                                : baseUrl + "/api/venues/photo/" + photos.get(0).getId());
 
                 result.add(item);
             }

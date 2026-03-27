@@ -7,7 +7,7 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // 🔥 FETCH CART
+  // FETCH CART
   const fetchCart = () => {
     setLoading(true);
 
@@ -17,12 +17,12 @@ const Cart = () => {
       .finally(() => setLoading(false));
   };
 
-  // 🔥 INITIAL LOAD
+  // INITIAL LOAD
   useEffect(() => {
     fetchCart();
   }, []);
 
-  // 🔥 AUTO REFRESH (OPTIONAL BUT POWERFUL)
+  // AUTO REFRESH
   useEffect(() => {
     const interval = setInterval(() => {
       fetchCart();
@@ -31,7 +31,7 @@ const Cart = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔥 REMOVE ITEM
+  // REMOVE ITEM
   const handleRemove = async (id) => {
     try {
       await API.delete(`/booking/cart/${id}`);
@@ -41,7 +41,7 @@ const Cart = () => {
     }
   };
 
-  // 🔥 CHECKOUT
+  // CHECKOUT
   const handleCheckout = async () => {
 
     if (cart.items.length === 0) return;

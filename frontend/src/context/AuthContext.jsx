@@ -4,7 +4,6 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
 
-  // ✅ ONLY place hooks INSIDE component
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user")) || null
   );
@@ -26,7 +25,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ SAFE HOOK
 export const useAuth = () => {
   const context = useContext(AuthContext);
 

@@ -3,7 +3,6 @@ package com.pickleball.booking.controller;
 import com.pickleball.booking.entity.User;
 import com.pickleball.booking.service.UserService;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,13 +23,11 @@ public class UserController {
                 .getPrincipal();
     }
 
-    @PreAuthorize("hasRole('BOOKER')")
     @GetMapping("/profile")
     public User getProfile() {
         return userService.getProfile(getUserId());
     }
 
-    @PreAuthorize("hasRole('BOOKER')")
     @PutMapping("/profile")
     public User updateProfile(@RequestBody User user) {
         return userService.updateProfile(getUserId(), user);

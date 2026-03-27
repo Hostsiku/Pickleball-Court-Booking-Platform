@@ -31,19 +31,19 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 🔥 NAME VALIDATION
+        // NAME VALIDATION
         if (updated.getName() == null || updated.getName().trim().length() < 3) {
             throw new RuntimeException("Name must be at least 3 characters");
         }
 
-        // 🔥 EMAIL VALIDATION
+        // EMAIL VALIDATION
         String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
         if (updated.getEmail() == null ||
                 !Pattern.matches(emailRegex, updated.getEmail())) {
             throw new RuntimeException("Invalid email format");
         }
 
-        // 🔥 EMAIL DUPLICATE CHECK
+        // EMAIL DUPLICATE CHECK
         if (!user.getEmail().equals(updated.getEmail()) &&
                 userRepository.existsByEmail(updated.getEmail())) {
             throw new RuntimeException("Email already in use");
@@ -52,7 +52,7 @@ public class UserService {
         user.setName(updated.getName().trim());
         user.setEmail(updated.getEmail().trim());
 
-        // 🔥 PASSWORD UPDATE (OPTIONAL)
+        // PASSWORD UPDATE
         if (updated.getPassword() != null &&
                 !updated.getPassword().trim().isEmpty()) {
 

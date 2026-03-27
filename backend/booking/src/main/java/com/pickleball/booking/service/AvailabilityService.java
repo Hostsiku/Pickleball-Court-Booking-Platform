@@ -67,24 +67,21 @@ public class AvailabilityService {
         int start = Integer.parseInt(venue.getOpenTime().split(":")[0]);
         int end = Integer.parseInt(venue.getCloseTime().split(":")[0]);
 
-        // 🔥 FIXED SLOT GENERATION LOGIC
+        //  SLOT GENERATION LOGIC
         List<Integer> hours = new ArrayList<>();
 
-        // ✅ 24x7
         if (start == end) {
             for (int i = 0; i < 24; i++) {
                 hours.add(i);
             }
         }
 
-        // ✅ NORMAL
         else if (start < end) {
             for (int i = start; i < end; i++) {
                 hours.add(i);
             }
         }
 
-        // ✅ OVERNIGHT
         else {
             for (int i = start; i < 24; i++) {
                 hours.add(i);
@@ -105,7 +102,7 @@ public class AvailabilityService {
             for (int i : hours) {
 
                 int slotStart = i;
-                int slotEnd = (i + 1) % 24; // 🔥 FIX FOR MIDNIGHT
+                int slotEnd = (i + 1) % 24; 
 
                 String status = "Available";
 
@@ -114,13 +111,11 @@ public class AvailabilityService {
                     int bookedStart = Integer.parseInt(b.getStartTime().split(":")[0]);
                     int bookedEnd = Integer.parseInt(b.getEndTime().split(":")[0]);
 
-                    // 🔥 FIXED OVERLAP LOGIC
                     boolean overlap;
 
                     if (bookedStart < bookedEnd) {
                         overlap = slotStart < bookedEnd && slotEnd > bookedStart;
                     } else {
-                        // overnight booking
                         overlap = (slotStart >= bookedStart || slotEnd <= bookedEnd);
                     }
 
@@ -148,7 +143,7 @@ public class AvailabilityService {
                     }
                 }
 
-                // 🔥 DATE VALIDATION
+                // DATE VALIDATION
                 if (isPastDate) {
                     status = "Unavailable";
                 } else if (isToday) {
@@ -158,9 +153,8 @@ public class AvailabilityService {
                     LocalTime slotStartTime = LocalTime.of(slotStart, 0);
                     LocalTime slotEndTime = LocalTime.of(slotEnd, 0);
 
-                    // 🔥 FIX: handle midnight crossing
                     if (slotEnd == 0) {
-                        slotEndTime = LocalTime.of(23, 59); // treat as end of day
+                        slotEndTime = LocalTime.of(23, 59);
                     }
 
                     // if slot already finished

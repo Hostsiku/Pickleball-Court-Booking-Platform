@@ -69,7 +69,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getId(), user.getRole());
 
-        // ✅ RETURN FULL USER DATA
+        // RETURN FULL USER DATA
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("name", user.getName());

@@ -15,7 +15,7 @@ const EditProfile = () => {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
-    const { setUser: setAuthUser } = useAuth(); // 🔥 IMPORTANT
+    const { user: authUser, setUser: setAuthUser } = useAuth();
 
     useEffect(() => {
         API.get("/user/profile")
@@ -63,7 +63,6 @@ const EditProfile = () => {
 
             const res = await API.put("/user/profile", user);
 
-            // 🔥 UPDATE LOCAL STORAGE
             const stored = JSON.parse(localStorage.getItem("user"));
 
             const updatedUser = {
@@ -74,11 +73,14 @@ const EditProfile = () => {
 
             localStorage.setItem("user", JSON.stringify(updatedUser));
 
-            // 🔥 UPDATE CONTEXT (REAL TIME UI UPDATE)
             setAuthUser(updatedUser);
 
-            // 🔥 REDIRECT TO PROFILE
-            navigate("/profile");
+            // ROLE BASED REDIRECT
+            if (updatedUser.role === "OWNER") {
+                navigate("/owner/profile");
+            } else {
+                navigate("/profile");
+            }
 
         } catch (err) {
             alert(
@@ -92,7 +94,7 @@ const EditProfile = () => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow max-w-lg">
+        <div className="bg-white p-6 rounded-xl shadow max-w-lg mx-auto mt-10">
 
             <h2 className="text-xl font-bold mb-6">Edit Profile</h2>
 
@@ -137,7 +139,7 @@ const EditProfile = () => {
             <button
                 onClick={handleSave}
                 className={`mt-6 w-full py-2 rounded text-white 
-                ${loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+        ${loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
             >
                 {loading ? "Saving..." : "Save Changes"}
             </button>

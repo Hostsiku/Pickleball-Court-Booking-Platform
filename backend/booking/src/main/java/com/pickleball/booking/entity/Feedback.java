@@ -18,10 +18,7 @@ public class Feedback {
 
     private LocalDateTime createdAt;
 
-    // ✅ DEFAULT CONSTRUCTOR (REQUIRED)
     public Feedback() {}
-
-    // ✅ ALL GETTERS & SETTERS
 
     public Long getId() {
         return id;

@@ -57,7 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/venues/details/{id}").permitAll()
                         .anyRequest().authenticated())
 
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); // ✅ FIX
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); 
 
         return http.build();
     }

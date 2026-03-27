@@ -14,6 +14,7 @@ import CreateVenue from "./pages/CreateVenue";
 import EditVenue from "./pages/EditVenue";
 import EditProfile from "./pages/EditProfile";
 import Feedback from "./pages/Feedback";
+import OwnerProfile from "./pages/OwnerProfile";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
         <Route path="/owner/venue/:id" element={<EditVenue />} />
         <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/owner/profile" element={<OwnerProfile />} />
       </Routes>
     </>
   );

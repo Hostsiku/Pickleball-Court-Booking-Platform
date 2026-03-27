@@ -36,20 +36,26 @@ const Home = () => {
 
         {/* LEFT CONTENT */}
         <div className="max-w-xl">
+          {/* LOCATION + SEARCH (COMBINED) */}
+          <div className="bg-white shadow-md rounded-full px-3 py-2 flex items-center gap-3 mb-6 w-[360px]">
 
-          {/* LOCATION PILL */}
-          <div className="bg-white shadow-md rounded-full px-5 py-2 flex items-center gap-3 mb-6 w-[300px]">
-
-            <span>📍</span>
+            <span className="text-lg">📍</span>
 
             <input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Enter location"
-              className="outline-none text-sm w-full"
+              className="outline-none text-sm flex-1 px-2"
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
+
+            <button
+              onClick={handleSearch}
+              className="bg-green-600 text-white px-4 py-1.5 rounded-full text-sm hover:bg-green-700 transition"
+            >
+              Search
+            </button>
 
           </div>
 
@@ -61,14 +67,6 @@ const Home = () => {
           <p className="text-gray-500 text-lg mb-6">
             The World’s Largest Sports Community to Book Venues.
           </p>
-
-          {/* SEARCH BUTTON */}
-          <button
-            onClick={handleSearch}
-            className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition"
-          >
-            Search
-          </button>
 
         </div>
 

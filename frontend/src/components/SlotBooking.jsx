@@ -257,7 +257,7 @@ const SlotBooking = ({ venueId, isReschedule, bookingId, bookingData }) => {
         </table>
       </div>
 
-      {/* 🔥 SELECTED SLOT PREVIEW */}
+      {/* SELECTED SLOT PREVIEW */}
       {isReschedule && selectedSlots.length === 1 && (
         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-gray-600">Selected Slot:</p>

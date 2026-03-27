@@ -31,7 +31,8 @@ const Login = () => {
     return null;
   };
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault()
 
     const validationError = validate();
 
@@ -63,7 +64,7 @@ const Login = () => {
 
       console.log("LOGIN ERROR:", err);
 
-      // HANDLE ALL TYPES OF ERRORS SAFELY
+      // HANDLE ERRORS
       let message = "Login failed";
 
       if (err.response?.data) {
@@ -85,8 +86,7 @@ const Login = () => {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
 
-      <div className="bg-white p-8 rounded-xl shadow w-[350px]">
-
+      <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow w-[350px]">
         <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
 
         {/* EMAIL */}
@@ -118,8 +118,6 @@ const Login = () => {
 
         {/* BUTTON */}
         <button
-          onClick={handleLogin}
-          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
           disabled={loading}
           className={`w-full py-2 rounded text-white ${
             loading
@@ -141,7 +139,7 @@ const Login = () => {
           </Link>
         </p>
 
-      </div>
+      </form>
 
     </div>
   );
