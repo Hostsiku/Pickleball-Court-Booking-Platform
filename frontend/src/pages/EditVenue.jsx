@@ -115,12 +115,24 @@ const EditVenue = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-600">Open Time</label>
-                <input name="openTime" value={form.openTime || ""} onChange={handleChange} className={inputStyle} />
+                <input
+                  type="time"
+                  name="openTime"
+                  value={form.openTime || ""}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
               </div>
 
               <div>
                 <label className="text-sm text-gray-600">Close Time</label>
-                <input name="closeTime" value={form.closeTime || ""} onChange={handleChange} className={inputStyle} />
+                <input
+                  type="time"
+                  name="closeTime"
+                  value={form.closeTime || ""}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
               </div>
             </div>
           </div>

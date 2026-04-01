@@ -55,13 +55,13 @@ public class VenueService {
             return venueRepository.save(venue);
         }
 
-        // NORMAL SAME DAY 
+        // NORMAL SAME DAY
         if (open.isBefore(close)) {
             venue.setOwnerId(userId);
             return venueRepository.save(venue);
         }
 
-        //  OVERNIGHT 
+        // OVERNIGHT
         venue.setOwnerId(userId);
         return venueRepository.save(venue);
     }
@@ -129,8 +129,12 @@ public class VenueService {
                 throw new RuntimeException("Invalid time format (HH:mm required)");
             }
 
-            if (!open.isBefore(close)) {
-                throw new RuntimeException("Open time must be before close time");
+            if (open.equals(close)) {
+                // 24x7 allowed
+            } else if (open.isAfter(close)) {
+                // overnight allowed
+            } else {
+                // normal case 
             }
 
             venue.setOpenTime(updatedVenue.getOpenTime());
